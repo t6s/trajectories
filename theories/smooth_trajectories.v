@@ -479,6 +479,17 @@ Definition cell_safe_exits_right (c : cell) : seq vert_edge :=
   map (fun p => Build_vert_edge lx (p_y (fst p)) (p_y (snd p))) 
    (seq_to_intervals (rev (right_pts c))).
 
+Definition all_doors (cells : seq cell) : seq (vert_edge * nat) :=
+  List.concat
+    (List.map (fun i => List.map (fun v => (v, i))
+                  (cell_safe_exits_right (nth i cells dummy_cell)))
+         (seq.iota 0 (List.length cells))).
+
+Definition door_right_cell (cells : seq cell) (v : vert_edge) :=
+  find (fun i => existsb (fun v' => vert_edge_eqb v v')
+           (cell_safe_exits_left (nth i cells dummy_cell)))
+     (seq.iota 0 (List.length cells)).
+
 Definition vert_edge_midpoint (ve : vert_edge) : pt :=
   {|p_x := ve_x ve; p_y := (ve_top ve + ve_bot ve) / 2|}.
 
