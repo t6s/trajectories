@@ -20,13 +20,13 @@ TODO
   - Reynald Affeldt (initial)
   - Yves Bertot (initial)
 - License: [CeCILL-C](LICENSE)
-- Compatible Coq versions: Coq >= 8.15, MathComp >= 1.15
+- Compatible Coq versions: Coq >= 8.15, MathComp >= 1.16
 - Additional dependencies:
   - [MathComp ssreflect 1.15 or later](https://math-comp.github.io)
   - [MathComp fingroup 1.15 or later](https://math-comp.github.io)
   - [MathComp algebra 1.15 or later](https://math-comp.github.io)
   - [MathComp solvable 1.15 or later](https://math-comp.github.io)
-  - [MathComp field 1.15 or later](https://math-comp.github.io)
+  - [MathComp field 1.16 or later](https://math-comp.github.io)
   - [Mathcomp real closed 1.1.3 or later](https://github.com/math-comp/real-closed/)
   - [Algebra tactics 1.0.0](https://github.com/math-comp/algebra-tactics)
   - [MathComp analysis](https://github.com/math-comp/analysis)
