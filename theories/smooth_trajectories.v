@@ -132,23 +132,42 @@ Definition closing_cells (p : pt) (contact_cells: seq cell) : seq cell :=
   List.map (fun c => close_cell p c) contact_cells.
 
 Fixpoint opening_cells_aux (p : pt) (out : seq edge) (low_e high_e : edge) 
-  : seq cell * cell :=
+  (leftpts : option (seq pt)) : seq cell * cell :=
       match out with
-    | nil => let op0 := vertical_intersection_point p low_e in
+    | nil =>
+      match leftpts with
+      | None =>
+          let op0 := vertical_intersection_point p low_e in
               let op1 := vertical_intersection_point p high_e in
                       match (op0,op1) with
                           |(None,_) |(_,None)=> (nil, dummy_cell)
                           |(Some(p0),Some(p1)) =>
                               (nil , 
-                              Bcell  (no_dup_seq pt_eqb (p1 :: p :: p0 :: nil)) nil low_e high_e)                      end
-    | c::q => let op0 := vertical_intersection_point p low_e in
-              let (s, nc) := opening_cells_aux p q c high_e in
+                              Bcell  (no_dup_seq pt_eqb (p1 :: p :: p0 :: nil)) nil low_e high_e)
+                      end
+      | Some lpts =>
+        let op1 := vertical_intersection_point p high_e in
+          match op1 with
+          | Some p1 =>
+            (nil, Bcell (no_dup_seq pt_eqb (p1 :: (seq.behead lpts))) nil low_e high_e)
+          | None => (nil, dummy_cell)
+          end
+      end
+    | c::q =>
+      match leftpts with
+      | None =>
+        let op0 := vertical_intersection_point p low_e in
+              let (s, nc) := opening_cells_aux p q c high_e None in
                     match op0 with
                        | None => (nil, dummy_cell)
                        | Some(p0) =>
                         (Bcell  (no_dup_seq pt_eqb (p :: p0 :: nil)) nil low_e c :: s,
                          nc)
                     end
+      | Some lpts =>
+        let (s, nc) := opening_cells_aux p q c high_e None in
+          (Bcell (no_dup_seq pt_eqb (p :: (seq.behead lpts))) nil low_e c :: s, nc)
+      end
 end.
 
 Definition pue_formula (p : pt) (a : pt) (b : pt) : Q :=
@@ -168,11 +187,6 @@ Definition edge_below (e1 : edge) (e2 : edge) : bool :=
  point_under_edge (right_pt e1) e2)
 || (negb (point_strictly_under_edge (left_pt e2) e1) && 
    negb (point_strictly_under_edge (right_pt e2) e1)).
-
-
-Definition opening_cells (p : pt) (out : seq edge) (l h : edge) : seq cell :=
-   let (s, c) := opening_cells_aux p (path.sort edge_below out) l h in
-   seq.rcons s c.
 
 Definition contains_point (p : pt) (c : cell)  : bool :=
    negb (point_strictly_under_edge p (low c)) && point_under_edge p (high c).
@@ -236,7 +250,7 @@ Definition update_open_cell (c : cell) (e : event) : seq cell * cell :=
      (nil, Bcell newptseq (right_pts c) (low c) (high c))
   | _ =>
     opening_cells_aux (point e) (path.sort edge_below (outgoing e))
-        (low c) (high c)
+        (low c) (high c) (Some (left_pts c))
   end.
 
 Definition pvert_y (p : pt) (e : edge) :=
@@ -254,7 +268,7 @@ Definition update_open_cell_top (c : cell) (new_high : edge) (e : event) :=
       (nil, Bcell newptseq (right_pts c) (low c) new_high)
   | _ => 
     opening_cells_aux (point e) (path.sort edge_below (outgoing e))
-        (low c) new_high
+        (low c) new_high (Some (left_pts c))
   end.
 
 Definition step (e : event) (st : scan_state) : scan_state :=
@@ -269,7 +283,7 @@ Definition step (e : event) (st : scan_state) : scan_state :=
      let closed_cells := cls ++ cl :: closed in
      let (new_open_cells, newlastopen) :=
        opening_cells_aux p (path.sort edge_below (outgoing e))
-            lower_edge higher_edge in
+            lower_edge higher_edge None in
      Bscan (first_cells ++ new_open_cells)
            newlastopen last_cells closed_cells 
            last_closed  higher_edge (p_x (point e))
@@ -284,7 +298,7 @@ Definition step (e : event) (st : scan_state) : scan_state :=
      let closed_cells := cls++closed in
      let (new_open_cells, newlastopen) :=
        opening_cells_aux p (path.sort edge_below (outgoing e))
-            low_edge higher_edge in
+            low_edge higher_edge None in
      Bscan (first_cells ++ new_open_cells)
            newlastopen last_cells closed_cells last_closed
             higher_edge (p_x (point e))
@@ -339,7 +353,7 @@ Definition start (first_event : event) (bottom : edge) (top : edge) :
   scan_state :=
   let (newcells, lastopen) :=
   opening_cells_aux (point first_event)
-      (path.sort edge_below (outgoing first_event)) bottom top in
+      (path.sort edge_below (outgoing first_event)) bottom top None in
       (Bscan newcells lastopen nil nil
          (close_cell (point first_event) (start_open_cell bottom top))
          top (p_x (point first_event))).
@@ -1180,6 +1194,12 @@ Definition inside_box (p : pt) (bottom top : edge) :=
 
 (*******  starting work on an example ******************)
 
+(*
+Definition example_edge_list : seq edge :=
+  Bedge (Bpt (-1) 0) (Bpt 0 (-1)) ::
+  Bedge (Bpt 0 1) (Bpt 1 1) :: nil.
+*)
+
 Definition example_edge_list : seq edge :=
   Bedge (Bpt (-3) 0) (Bpt (-2) 1) ::
   Bedge (Bpt (-3) 0) (Bpt 0 (-3)) ::
@@ -1188,12 +1208,12 @@ Definition example_edge_list : seq edge :=
   Bedge (Bpt 0 1) (Bpt 1 0) ::
   Bedge (Bpt (-1) 0) (Bpt 0 (-1)) ::
   Bedge (Bpt 0 (-1)) (Bpt 1 0) :: nil.
+
 (*
   Bedge (Bpt (-2) (-1)) (Bpt 2 1) ::
   Bedge (Bpt (4 # 5) (-1 # 5)) (Bpt 2 1) ::
   Bedge (Bpt (4 # 5) (-1 # 5)) (Bpt (17 # 5) (-5 / 2)) ::
   Bedge  (Bpt (-2) (-1)) (Bpt (17 # 5) (-5 / 2)) :: nil. *)
-
 
 Lemma example_edge_cond : edge_cond example_edge_list = true.
 Proof. easy. Qed.
@@ -1268,8 +1288,8 @@ Compute let p1 := (* Bpt (-19/10) (-3/2) *) Bpt (-1) (2/3) in
   let cp := o2l (cell_path example_cells 0 3) in
   existsb (Nat.eqb (nth ((List.length cp) - 2) cp 0%nat)) target_is.
 
-Compute let p2 := (* Bpt (-19/10) (-3/2) *) Bpt (-1.1) (2/3) in
-  let p1 := Bpt (-3.1) 1.9 in
+Compute let p2 := (* Bpt (-19/10) (-3/2) *) Bpt (-3.5) 1.9 in
+  let p1 := Bpt 0.5 0 in
   example_test p1 p2
    ("[4 4] 0 setdash 3 setlinewidth"%string ::
    (List.map (fun sg => display_segment 300 400 70 (apt_val (fst sg), apt_val (snd sg)))
@@ -1295,8 +1315,8 @@ Compute match common_vert_edge (nth 5 example_cells dummy_cell) (nth 7 example_c
         end.
 
 Compute
-  let p2 := Bpt (-19/10) (-3/2) in
-  let p1 := Bpt (-1) (1/3) in
+  let p2 := Bpt (-0.5) 0 in
+  let p1 := Bpt 0.5 0 in
   example_test p1 p2 nil.
 
 Compute nth 5 example_cells dummy_cell.
