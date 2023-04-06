@@ -129,16 +129,15 @@ documentation: |-
    way to produce example outputs:
 
    ```
-   (cd theories; coqc smooth_trajectories.v | ../coq_output_to_postscript.pl)
+   (cd theories; ./run_tests.sh)
    ```
 
-  At the time of writing this paragraph, the code is incomplete, in
-  the sense that it won't compute a
-  trajectory between points if either the source or the target are at the
-  exact intersection between to adacent cells.
+  At the time of writing this paragraph, the code seems complete but
+  many bugs have been found in parts of the code that have not been proved
+  formally.
 
   If you play with this code and you obtain a trajectory that obviously
-  crosses the given edges.
+  crosses the given edges, please report.
 
   ## Previous work reused at the time of the first releases
 
