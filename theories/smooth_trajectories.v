@@ -1200,22 +1200,43 @@ Definition example_edge_list : seq edge :=
   Bedge (Bpt 0 1) (Bpt 1 1) :: nil.
 *)
 
-Definition example_edge_list : seq edge :=
-  Bedge (Bpt (-3) 0) (Bpt (-2) 1) ::
+Definition example_edge_sets : seq (seq edge) :=
+  (Bedge (Bpt (-3) 0) (Bpt (-2) 1) ::
   Bedge (Bpt (-3) 0) (Bpt 0 (-3)) ::
   Bedge (Bpt 0 (-3)) (Bpt 3 0) ::
   Bedge (Bpt (-2) 1) (Bpt 0 1) ::
   Bedge (Bpt 0 1) (Bpt 1 0) ::
   Bedge (Bpt (-1) 0) (Bpt 0 (-1)) ::
-  Bedge (Bpt 0 (-1)) (Bpt 1 0) :: nil.
-
-(*
-  Bedge (Bpt (-2) (-1)) (Bpt 2 1) ::
+  Bedge (Bpt 0 (-1)) (Bpt 1 0) :: nil) ::
+(****)
+  (Bedge (Bpt (-2) (-1)) (Bpt 2 1) ::
   Bedge (Bpt (4 # 5) (-1 # 5)) (Bpt 2 1) ::
   Bedge (Bpt (4 # 5) (-1 # 5)) (Bpt (17 # 5) (-5 / 2)) ::
-  Bedge  (Bpt (-2) (-1)) (Bpt (17 # 5) (-5 / 2)) :: nil. *)
+  Bedge (Bpt (-2) (-1)) (Bpt (17 # 5) (-5 / 2)) :: nil) ::
+(****)
+  (Bedge (Bpt (-1) 0) (Bpt 0 (-1)) ::
+  Bedge (Bpt 0 1) (Bpt 1 0) :: nil) :: nil.
 
-Lemma example_edge_cond : edge_cond example_edge_list = true.
+Definition example_point_spread_sets : seq (seq (pt * pt)) :=
+  ((Bpt 0 0.3, Bpt (-3) 1.9) ::
+   (Bpt (-3) 1.9, Bpt (-1) 0.66) ::
+   (Bpt (-1.9) 1.5, Bpt 1.5 0) :: nil) ::
+(*******)
+  ((Bpt 0 0.3, Bpt (-3) 1.9) ::
+   (Bpt (-3) 1.9, Bpt (-1) 0.66) ::
+   (Bpt (-1.9) 1.5, Bpt 1.5 0) :: nil) ::
+(*******)
+  ((Bpt (-0.5) 0, Bpt 0.5 0) ::
+   (Bpt (-1.1) 0, Bpt 0.5 0) ::
+   (Bpt 0 0 , Bpt 1 1) :: nil) ::
+nil.
+
+(* This lemma is testing that the datasets we produced
+  do satisfy the pre-condition.  This lemma is not testing
+  the code, but the dataset. *)
+Lemma example_edge_cond :
+  forallb (fun edge_list =>
+               edge_cond edge_list) example_edge_sets = true.
 Proof. easy. Qed.
 
 Notation BOTTOM :=
@@ -1230,26 +1251,49 @@ Definition example_bottom : edge := BOTTOM.
 
 Definition example_top : edge := TOP.
 
+(*  This lemma also tests the dataset, this time verifying
+  that all edge exremities are inside the box. *)
 Lemma example_inside_box :
-  forallb (fun e => inside_box (point e) example_bottom example_top)
-     (edges_to_events example_edge_list) = true.
+  forallb (fun edge_list =>
+     forallb (fun e => inside_box (point e) example_bottom example_top)
+       (edges_to_events edge_list)) example_edge_sets = true.
 Proof. easy. Qed.
 
+(* This lemma is testing the code.  It checks that all cells
+   that have a vertical left edge have a neighbor on their left
+   that has the same vertical edge on the right. *)
 Lemma all_cells_have_left_neighbor :
-  let cells := edges_to_cells example_bottom example_top example_edge_list in
+  forallb (fun edge_list =>
+  let cells := edges_to_cells example_bottom example_top edge_list in
   forallb (fun c =>
             (implb (andb (negb (Qeq_bool (left_limit c)
                 (p_x (seq.head dummy_pt (leftmost_points example_bottom example_top)))))
                 (Nat.ltb 1 (List.length (left_pts c))))
-            (existsb (fun c' => lr_connected c' c) cells))) cells = true.
+            (existsb (fun c' => lr_connected c' c) cells))) cells)
+        example_edge_sets = true.
 Proof. easy. Qed.
 
-Definition example_start_event :=
-  seq.head dummy_event (edges_to_events example_edge_list).
+Definition reference_line edge_list p1 p2 :=
+   ("[4 4] 0 setdash 3 setlinewidth"%string ::
+   (List.map (fun sg => display_segment 300 400 70 (apt_val (fst sg), apt_val (snd sg)))
+   match point_to_point (edges_to_cells example_bottom example_top edge_list) p1 p2 with
+   Some l => l
+   | None => nil
+   end ++ "stroke %debug"%string :: nil)).
 
-Definition example_test (p1 p2 : pt) (extra : seq string) :=
+Definition example_test edge_list (p1 p2 : pt) (extra : seq string) :=
   display_full_example 300 400 70 example_bottom example_top
-    example_edge_list p1 p2 extra.
+    edge_list p1 p2 extra.
+
+Definition example_by_index edge_list_index point_pair_index (with_dotted_line : bool) :=
+  let edge_list := nth edge_list_index example_edge_sets nil in
+  let point_pairs := nth edge_list_index example_point_spread_sets nil in
+  let pp := nth point_pair_index point_pairs (Bpt 0 0, Bpt 1 1) in
+  example_test edge_list (fst pp) (snd pp)
+  (if with_dotted_line then
+     reference_line edge_list (fst pp) (snd pp)
+   else
+     nil).
 
 (* To display a more elaborate example that shows in a curved dash line
   the result of smoothening the trajectory without repaing, you can
@@ -1273,6 +1317,8 @@ List.map (display_curve_element 300 400 70) bad_smooth ++
 (* To display the result of smoothening with repair, you can run the following
   command. *)
 
+(*
+Definition example_edge_list := nth 0 example_edge_sets nil.
 Definition example_cells := edges_to_cells example_bottom example_top
      example_edge_list.
 
@@ -1324,3 +1370,6 @@ Compute nth 5 example_cells dummy_cell.
 Compute nth 7 example_cells dummy_cell.
 
 Compute edges_to_events example_edge_list.
+*)
+
+(* Compute example_by_index 0 0 false. *)
