@@ -782,13 +782,18 @@ if Nat.ltb 0 (List.length source_is) && Nat.ltb 0 (List.length target_is) then
       else
       (* if cp has length 1, then there is only one door. if one of the
          point is on the door, it can be connected to the other, *)
-         if Nat.ltb 1 (List.length source_is) || Nat.ltb 1 (List.length target_is) then
-           Some ((Apt source source_is, Apt target target_is) :: nil)
-         else
-         (* otherwise, none of the points are in doors *)
-         Some (point_to_door cells (Apt source source_is) (seq.head 0%nat source_is) (nth 0 cp 0%nat) ++
-         path_reverse (point_to_door cells (Apt target target_is) (seq.head 0%nat source_is)
-                (nth 0 cp 0%nat)))
+         match common_vert_edge (nth (seq.head 0%nat source_is) cells dummy_cell)
+                                (nth (seq.head 0%nat target_is) cells dummy_cell) with
+         | Some v =>
+           if on_vert_edge source v || on_vert_edge target v then
+              Some ((Apt source source_is, Apt target target_is) :: nil)
+           else
+              Some (point_to_door cells (Apt source source_is) (seq.head 0%nat source_is)
+                 (seq.head 0%nat target_is) ++
+                   path_reverse (point_to_door cells (Apt target target_is)
+                        (seq.head 0%nat source_is) (seq.head 0%nat target_is)))
+         | None => None
+         end
   | None => None
   end
 else
