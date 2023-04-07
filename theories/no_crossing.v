@@ -182,7 +182,9 @@ Definition add_edge_avoid_cross (e : edge) (evs : seq event) :=
                add_event (left_pt e') e' false 
                   (add_event (right_pt e') e' true
                         (repair_hit_edge e' evs')))
-     (make_broken_edges e (find_all_crossing_points e evs))
+     (make_broken_edges e 
+          (no_dup_seq Qeq_bool
+              (path.sort Qlt_bool (find_all_crossing_points e evs))))
      evs.
 
 Definition add_edge_avoid_cross_debug (e : edge) (evs : seq event) :=
@@ -196,10 +198,10 @@ Definition add_edge_avoid_cross_debug (e : edge) (evs : seq event) :=
 Definition edges_to_events_nc (es : seq edge) : seq event :=
   iter_list add_edge_avoid_cross es nil.
 
-Definition e1 := (Bedge (Bpt 0 0) (Bpt 2 1)).
-Definition e2 := (Bedge (Bpt 0 2) (Bpt 2 0)).
-Definition e3 := (Bedge (Bpt 0 (-1)) (Bpt 2 4)).
-Definition e4 := Bedge (Bpt 0 2) (Bpt 2 2).
+Definition e1 := (Bedge (Bpt 0 (-2)) (Bpt 2 (-1))).
+Definition e2 := (Bedge (Bpt 0 0) (Bpt 2 (-2))).
+Definition e3 := (Bedge (Bpt 0 (-3)) (Bpt 2 1)).
+Definition e4 := Bedge (Bpt 0 0) (Bpt 2 0).
 
 Compute (make_broken_edges e2 
            (find_all_crossing_points e2 (edges_to_events_nc (e1 :: nil)))). 
@@ -231,16 +233,36 @@ Definition display_break_points (e : edge) (bps : seq Q) :=
                    (Bpt (p_x (right_pt e)) (p_y (right_pt e) + 0.5))) :: nil))
          (make_broken_edges e bps)).
 
+Compute no_dup_seq Qeq_bool (path.sort Qlt_bool
+                (find_all_crossing_points e3 evs12)).
 Compute pre_cross_second_coordinate e3 (1/2).
-Compute evs13.
+Compute e3_1.
+Compute make_broken_edges e3 (find_all_crossing_points e3 evs12).
+Compute add_edge_avoid_cross e3_1 evs12.
 Compute repair_hit_edge e3 evs12.
 
+Lemma noc14 :
+  let l := List.concat (List.map outgoing evs14) in 
+  forallb (fun g => forallb (fun g' => edge_eqb g g' || negb (have_crossing g g')) l) l = true.
+Proof. easy. Qed.
+
+Lemma cnt14 :
+  List.length (List.concat (List.map outgoing evs14)) = 12%nat.
+Proof. easy. Qed.
+
 Import String.
+Compute example_test (List.concat (List.map outgoing evs14))
+             (Bpt 1.2 (-0.8)) (Bpt (-1) (0.4)) nil.
 Compute (concat "
 " (postscript_header ++
+   display_edge 300 400 70 example_bottom ::
+   display_edge 300 400 70 example_top ::
    List.map (display_edge 300 400 70)
          (List.concat (List.map (fun ev => outgoing ev) 
-                   (add_edge_avoid_cross_debug e3_1 evs12))) ++
+                evs14
+(*  ((* add_event (left_pt e3_1) e3_1 false *)
+                   ((* add_edge_avoid_cross_debug *) 
+add_edge_avoid_cross e3 evs12)) *))) ++
         "stroke"%string :: ""%string ::
         postscript_end_of_file)).
 
