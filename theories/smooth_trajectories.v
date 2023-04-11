@@ -283,7 +283,7 @@ Definition step (e : event) (st : scan_state) : scan_state :=
        open_cells_decomposition (op1 ++ lsto :: op2) p in
      let closed := closing_cells p contact_cells in
      let last_closed := close_cell p last_contact in
-     let closed_cells := cls ++ cl :: closed in
+     let closed_cells := closed ++ cl :: cls in
      let (new_open_cells, newlastopen) :=
        opening_cells_aux p (path.sort edge_below (outgoing e))
             lower_edge higher_edge None in
@@ -298,7 +298,7 @@ Definition step (e : event) (st : scan_state) : scan_state :=
 (* TODO code duplication (6 lines above) *)
      let closed := closing_cells p contact_cells in
      let last_closed := close_cell p last_contact in
-     let closed_cells := cls++closed in
+     let closed_cells := closed ++ cls in
      let (new_open_cells, newlastopen) :=
        opening_cells_aux p (path.sort edge_below (outgoing e))
             low_edge higher_edge None in
@@ -317,7 +317,7 @@ Definition step (e : event) (st : scan_state) : scan_state :=
      let last_closed := close_cell p last_contact in
      let (new_opens, new_lopen) := update_open_cell_top lsto higher_edge e in
      Bscan (op1 ++ fc' ++ new_opens) new_lopen last_cells
-          (cls ++ cl :: closed) last_closed higher_edge lx.
+          (closed ++ cl :: cls) last_closed higher_edge lx.
 
 Definition leftmost_points (bottom top : edge) :=
   if Qlt_bool (p_x (left_pt bottom)) (p_x (left_pt top)) then
@@ -376,9 +376,9 @@ Definition scan (events : seq event) (bottom top : edge) : seq cell :=
   | ev0 :: events =>
     let start_scan := start ev0 bottom top in
     let final_scan := iter_list step events start_scan in
-      lst_closed final_scan :: map (complete_last_open bottom top)
+      map (complete_last_open bottom top)
       (lst_open final_scan :: sc_open1 final_scan ++ sc_open2 final_scan) ++
-      sc_closed final_scan
+      lst_closed final_scan :: sc_closed final_scan
   end.
 
 (* This is the main function of vertical cell decomposition. *)
