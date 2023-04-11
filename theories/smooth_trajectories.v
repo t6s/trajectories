@@ -66,6 +66,9 @@ Definition pt_eqb (a b : pt) : bool :=
   let: Bpt b_x b_y := b in
      (Qeq_bool a_x b_x)%Q && (Qeq_bool a_y b_y).
 
+Definition edge_eqb (g1 g2 : edge) : bool :=
+  pt_eqb (left_pt g1) (left_pt g2) && pt_eqb (right_pt g1) (right_pt g2).
+
 Definition Qlt_bool (q1 q2 : Q) : bool :=
   negb (Qle_bool q2 q1).
 
