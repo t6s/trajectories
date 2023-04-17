@@ -1,0 +1,81 @@
+\documentclass[compress]{beamer}
+\usepackage[latin1]{inputenc}
+\usepackage{alltt}
+\usepackage{color}
+\setbeamertemplate{footline}[frame number]
+\title{Smooth trajectories in straight line mazes}
+\author{Yves Bertot}
+\date{April 2023}
+\mode<presentation>
+\begin{document}
+\maketitle
+\begin{frame}
+\frametitle{The game}
+\begin{itemize}
+\item Find a smooth path in a maze
+\item Decompose the problem
+\begin{itemize}
+\item Find a discrete approximation of the problem
+\item Construct a broken line (non-smooth path)
+\item smoothen the angles
+\end{itemize}
+\item Prove the correctness of the algorithm
+\begin{itemize}
+\item Prove the absence of collision
+\item work in progress
+\item Ideally one should also prove that a path
+is found as soon as one exists
+\end{itemize}
+\end{itemize}
+\end{frame}
+\begin{frame}
+\frametitle{Example}
+\includegraphics[trim={0 0 0 10cm}, clip, width=\textwidth]{spiral.pdf}
+\end{frame}
+\begin{frame}
+\frametitle{Cell decomposition}
+\begin{itemize}
+\item Decompose the space into simple cells
+\item Each cell is convex
+\item Each cell is free of obstacles
+\item Each cell may have neighbours for save moving
+\end{itemize}
+\end{frame}
+\begin{frame}
+\frametitle{Vertical cell decomposition}
+\begin{itemize}
+\item Use a vertical sweep line moving left to right
+\item Stop each time one meets an edge tip (an event)
+\item maintain a vertically ordered sequence of open cells
+\begin{itemize}
+\item close all open cells in contact with the event
+\item open new cells forall edges starting at this event
+\end{itemize}
+\item Simplifying assumptions
+\begin{itemize}
+\item No vertical edges
+\item Edges do not cross
+\end{itemize}
+\end{itemize}
+\end{frame}
+\begin{frame}
+\frametitle{Difficulty with vertically aligned events}
+\begin{itemize}
+\item  Closed cells may be degenerate
+\begin{itemize}
+\item  Left and right side are in contact
+\end{itemize}
+\item Solution: special treatment
+\begin{itemize}
+\item Add points to the right side of last closed cell
+\item Add points to the left side of last opened cell
+\end{itemize}
+\end{itemize}
+\end{frame}
+\end{document}
+
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: t
+%%% End: 
