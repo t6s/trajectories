@@ -1,7 +1,7 @@
 \documentclass[compress]{beamer}
 \usepackage[latin1]{inputenc}
 \usepackage{alltt}
-\usepackage{color}
+
 \setbeamertemplate{footline}[frame number]
 \title{Smooth trajectories in straight line mazes}
 \author{Yves Bertot}
@@ -30,7 +30,7 @@ is found as soon as one exists
 \end{frame}
 \begin{frame}
 \frametitle{Example}
-\includegraphics[trim={0 0 0 10cm}, clip, width=\textwidth]{spiral.pdf}
+\includegraphics[trim={0 0 0 10cm}, clip, width=\textwidth]{empty_spiral.pdf}
 \end{frame}
 \begin{frame}
 \frametitle{Cell decomposition}
@@ -38,7 +38,7 @@ is found as soon as one exists
 \item Decompose the space into simple cells
 \item Each cell is convex
 \item Each cell is free of obstacles
-\item Each cell may have neighbours for save moving
+\item Each cell may have neighbours where moving is safe
 \end{itemize}
 \end{frame}
 \begin{frame}
@@ -72,6 +72,146 @@ is found as soon as one exists
 \end{itemize}
 \end{itemize}
 \end{frame}
+\begin{frame}
+\frametitle{Vertical cell decomposition example}
+\includegraphics[trim={0 0 0 10cm}, clip, width=\textwidth]{cells_spiral.pdf}
+\end{frame}
+\begin{frame}
+\frametitle{Cell assumptions}
+\begin{itemize}
+\item Vertical edges are safe passages between two cells
+\item Moving directly left-edge right-edge is safe
+\begin{itemize}
+\item and vice-versa
+\end{itemize}
+\item Moving from a left-edge to the cell center is safe
+\begin{itemize}
+\item similarly for a right-edge
+\item moving from left-edge to left-edge is safe by going through the
+  cell center
+\end{itemize}
+\end{itemize}
+\end{frame}
+\begin{frame}
+\frametitle{Finding a path in the cell graph}
+\begin{itemize}
+\item A discrete path from cell to cell is found by breadth-first search
+\item Connected components of the graph are defined by polygons
+\item Special care for points that are already on the common edge of two cells
+\end{itemize}
+\end{frame}
+\begin{frame}
+\frametitle{Two examples of elementary safe paths}
+\includegraphics[trim={0 0 0 10cm}, clip, width=\textwidth]{spiral_safe2.pdf}
+\end{frame}
+\begin{frame}
+\frametitle{Making a broken line path between points}
+\begin{itemize}
+\item Find the cells containg the points
+\item Find a discrete path between cell names
+\item Make a path from vertical edge midpoint to vertical edge midpoint
+\item Connect the source and target point to the first and last
+   vertical edge midpoints
+\begin{itemize}
+\item Unless the source or targets are themselves on a vertical edge
+\end{itemize}
+\end{itemize}
+\end{frame}
+\begin{frame}
+\frametitle{broken line safe path between points}
+\includegraphics[trim={0 0 0 10cm}, clip, width=\textwidth]{spiral_bline.pdf}
+\end{frame}
+\begin{frame}
+\frametitle{Making corners smooth}
+\begin{itemize}
+\item Angles would require a robot to stop to turn
+\item rounded bends makes it possible to keep moving
+\item First approximation: no limit on steering radius
+\item Using quadratic Bezier curves for this purpose
+\end{itemize}
+\end{frame}
+\begin{frame}
+\frametitle{The basics of quadratic Bézier curves}
+\begin{itemize}
+\item Bezier curves are given by a set of control points
+   (3 for a quadratic curve)
+\item Points on the curves are obtained by computing weighted barycenters
+\begin{itemize}
+\item The curve is enclosed in the convex hull of the control points
+\end{itemize}
+\item Given control points \(a_0, a_1, \ldots, a_{n-1}, a_n\), \(a_0, a_1\)
+is tangent to the curve in \(a_0\)
+\begin{itemize}
+\item same for \(a_{n-1}, a_n\) in \(a_n\)
+\end{itemize}
+\end{itemize}
+\end{frame}
+\begin{frame}
+\frametitle{Bezier curve illustration}
+\begin{itemize}
+\item Straight edge tips of this drawing are control points
+\item The curve is inside the triangle
+\end{itemize}
+\includegraphics[trim={0 6cm 0 19cm}, clip, width=\textwidth]{bezier_example.pdf}
+\end{frame}
+\begin{frame}
+\frametitle{Plotting the Bezier curve}
+\begin{itemize}
+\item Show how the point for ratio \(4/9\) is computed
+\item Control points for the two subcurves are given by the new point,
+the initial starting and end points, and the solid green straight edge tip
+\end{itemize}
+\includegraphics[trim={0 6cm 0 19cm}, clip, width=\textwidth]{bezier_example2.pdf}
+\end{frame}
+\begin{frame}
+\frametitle{Using Bezier curves for smoothing}
+\begin{itemize}
+\item Add extra points in the middle of each straight line segment
+\item Uses these extra points as first and last control points for Bezier curves
+\item Use the angle point as the middle control point
+\item Check the Bezier curve for collision and repair if need be
+\end{itemize}
+\end{frame}
+\begin{frame}
+\frametitle{Checking for collision}
+\begin{itemize}
+\item Two kinds of angles
+\item Angles at cell center: in the middle of safe space
+\begin{itemize}
+\item No risk of collision
+\end{itemize}
+\item angles at vertical edge midpoint
+\begin{itemize}
+\item Use dichotomy until a guaranteed result is obtained
+\item To compute control points in dichotomy, only half sums are needed
+\end{itemize}
+\end{itemize}
+\end{frame}
+\begin{frame}
+\frametitle{Collision checking, graphically}
+\includegraphics[trim={0 4cm 0 17cm}, clip, width=\textwidth]{collision.pdf}
+\end{frame}
+\begin{frame}
+\frametitle{Not passing in the safe zone}
+\includegraphics[trim={0 4cm 0 17cm}, clip, width=\textwidth]{collision2.pdf}
+\end{frame}
+\begin{frame}
+\frametitle{Repairing a faulty curve}
+\begin{itemize}
+\item Simple solution: bring the control points closer together
+\item Use the first half points computed in the checking phase
+\item Try again with this curve
+\end{itemize}
+\end{frame}
+\begin{frame}
+\frametitle{Constructing a repaired curve}
+\includegraphics[trim={0 4cm 0 17cm}, clip, width=\textwidth]{repair.pdf}
+\end{frame}
+\begin{frame}
+\frametitle{Checking the repaired curve}
+\includegraphics[trim={0 4cm 0 17cm}, clip, width=\textwidth]{repair2.pdf}
+\end{frame}
+
 \end{document}
 
 
