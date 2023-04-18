@@ -198,9 +198,9 @@ the initial starting and end points, and the solid green straight edge tip
 \begin{frame}
 \frametitle{Repairing a faulty curve}
 \begin{itemize}
-\item Simple solution: bring the control points closer together
+\item Simple solution: bring the control points closer to the corner
 \item Use the first half points computed in the checking phase
-\item Try again with this curve
+\item Check and repair again recursively, if need be
 \end{itemize}
 \end{frame}
 \begin{frame}
@@ -210,19 +210,12 @@ the initial starting and end points, and the solid green straight edge tip
 \begin{frame}
 \frametitle{Checking the repaired curve}
 \begin{itemize}
-\item The dashed line after does not make it possible to conclude
-\item The solid lines do
+\item The one-triangle convex hull is given by the dashed line
+\item It does not make it possible to conclude
+\item After dichotomy, the solid lines do
 \end{itemize}
 \includegraphics[trim={0 4cm 0 17cm}, clip, width=\textwidth]{repair2.pdf}
 \end{frame}
-\begin{frame}
-\frametitle{Proof difficulties}
-\begin{itemize}
-\item Reasoning about convex hulls of Bezier control points is a powerful tool
-\item Question remains: how to reduce the amount of triangle tests
-\end{itemize}
-\end{frame}
-
 \end{document}
 
 
