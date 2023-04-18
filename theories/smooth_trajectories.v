@@ -1226,7 +1226,7 @@ Definition example_edge_sets : seq (seq edge) :=
   Bedge (Bpt 0 1) (Bpt 1 0) :: nil) :: nil.
 
 Definition example_point_spread_sets : seq (seq (pt * pt)) :=
-  ((Bpt 0 0.3, Bpt (-3) 1.9) ::
+  ((Bpt 0.5 0.3, Bpt (-3) 1.9) ::
    (Bpt (-3) 1.9, Bpt (-1) 0.66) ::
    (Bpt (-1.9) 1.5, Bpt 1.5 0) :: nil) ::
 (*******)
