@@ -1217,10 +1217,10 @@ Definition example_edge_sets : seq (seq edge) :=
   Bedge (Bpt (-1) 0) (Bpt 0 (-1)) ::
   Bedge (Bpt 0 (-1)) (Bpt 1 0) :: nil) ::
 (****)
-  (Bedge (Bpt (-2) (-1)) (Bpt 2 1) ::
-  Bedge (Bpt (4 # 5) (-1 # 5)) (Bpt 2 1) ::
-  Bedge (Bpt (4 # 5) (-1 # 5)) (Bpt (17 # 5) (-5 / 2)) ::
-  Bedge (Bpt (-2) (-1)) (Bpt (17 # 5) (-5 / 2)) :: nil) ::
+  (Bedge (Bpt (-2) (-2)) (Bpt 2 0) ::
+  Bedge (Bpt 0.8 (-1.2)) (Bpt 2 0) ::
+  Bedge (Bpt 0.8 (-1.2)) (Bpt (17 # 5) (-3)) ::
+  Bedge (Bpt (-2) (-2)) (Bpt (17 # 5) (-3)) :: nil) ::
 (****)
   (Bedge (Bpt (-1) 0) (Bpt 0 (-1)) ::
   Bedge (Bpt 0 1) (Bpt 1 0) :: nil) :: nil.
@@ -1228,11 +1228,11 @@ Definition example_edge_sets : seq (seq edge) :=
 Definition example_point_spread_sets : seq (seq (pt * pt)) :=
   ((Bpt 0.5 0.3, Bpt (-3) 1.9) ::
    (Bpt (-3) 1.9, Bpt (-1) 0.66) ::
-   (Bpt (-1.9) 1.5, Bpt 1.5 0) :: nil) ::
+   (Bpt (-1.9) 0.9, Bpt 1.5 (-1)) :: nil) ::
 (*******)
   ((Bpt 0 0.3, Bpt (-3) 1.9) ::
-   (Bpt (-3) 1.9, Bpt (-1) 0.66) ::
-   (Bpt (-1.9) 1.5, Bpt 1.5 0) :: nil) ::
+   (Bpt (-3) 1.9, Bpt 1.5 (-1)) ::
+   (Bpt (-1.9) (-2.1), Bpt 1.5 (-1)) :: nil) ::
 (*******)
   ((Bpt (-0.5) 0, Bpt 0.5 0) ::
    (Bpt (-1.1) 0, Bpt 0.5 0) ::

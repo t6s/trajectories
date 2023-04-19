@@ -4,7 +4,8 @@
 
 \setbeamertemplate{footline}[frame number]
 \title{Smooth trajectories in straight line mazes}
-\author{Yves Bertot}
+\author{Yves Bertot\\
+Joint work with Thomas Portet, Quentin Vermande}
 \date{April 2023}
 \mode<presentation>
 \begin{document}
@@ -215,6 +216,53 @@ the initial starting and end points, and the solid green straight edge tip
 \item After dichotomy, the solid lines do
 \end{itemize}
 \includegraphics[trim={0 4cm 0 17cm}, clip, width=\textwidth]{repair2.pdf}
+\end{frame}
+\begin{frame}
+\frametitle{Final trajectories}
+\includegraphics[trim={0 0 0 10cm}, clip, width=\textwidth]{smooth_spiral.pdf}
+\end{frame}
+\begin{frame}
+\frametitle{Final trajectories}
+\includegraphics[trim={0 0 0 10cm}, clip, width=\textwidth]{smooth_spiral2.pdf}
+\end{frame}
+\begin{frame}
+\frametitle{Final trajectories: repaired curve example}
+\includegraphics[trim={0 0 0 10cm}, clip, width=\textwidth]{polygon.pdf}
+\end{frame}
+\begin{frame}
+\frametitle{Proof tools}
+\begin{itemize}
+\item Breadth first search
+\item Convex hulls (Pichardie \& B. 2001)
+\begin{itemize}
+\item Orientation predicate
+\item Collision between two segments
+\end{itemize}
+\item Convex spaces and Bezier Curve
+\begin{itemize}
+\item Internship by Q. Vermande
+\item Using {\tt infotheo} (Affeldt et al.), {\tt mathcomp-analysis}
+   (Cohen et al.)
+\end{itemize}
+\item Bernstein Polynomials (B. \& Guilhot \& Mahboubi, 2010, Zsido 2013)
+\end{itemize}
+\end{frame}
+\begin{frame}
+\frametitle{Key proof features}
+\begin{itemize}
+\item Safe paths from cell centers to all doors to other cells
+\item Safe path from any door on the left side to a door on the right
+side of a cell
+\begin{itemize}
+\item This requires cells to have distinct left and right sides
+\end{itemize}
+\item Bezier curves that cross doors are monotonic in the first coordinate
+\begin{itemize}
+\item It is enough to prove that the door is passed correctly
+\item Formal proof not yet done
+\end{itemize}
+\item work in progress
+\end{itemize}
 \end{frame}
 \end{document}
 
