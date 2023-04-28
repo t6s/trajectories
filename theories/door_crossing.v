@@ -885,3 +885,41 @@ apply/ltW/conv_num_ltr=> //.
 move: bzuin=> /andP[] + _; rewrite -/p1'=> /eqP ->.
 by apply/ltW; rewrite vx2.
 Qed.
+
+Definition midpoint (a b : Plane R) := a <| 1/2 |> b.
+
+Definition mkedge (a b : Plane R) :=
+  match (exist (fun v => a.1 < b.1 == v) (a.1 < b.1) eqxx) with
+  | (exist true h) => Bedge h
+  | _ => Bedge 
+
+Fixpoint check_bezier_ccw (fuel : nat) (v : vert_edge)
+  (a b c : Plane R) : 
+  option bool :=
+match fuel with
+| O => None
+| S p =>
+  let top_edge := (ve_x v, ve_top v) in
+  let a := left_pt e in
+  let c := right_pt e in
+  if negb (point_under_edge top_edge (Bedge a c)) then
+    Some true
+  else if
+     point_under_edge top_edge (Bedge a b) ||
+     point_under_edge top_edge (Bedge b c)
+  then 
+    Some false
+  else
+    let b' := midpoint a b in
+    let b2 := midpoint b c in
+    let c' := midpoint b' b2 in
+    if c'.1 < ve_x v then
+      check_bezier_ccw p v c' b2 c
+    else if ve_x v < c'.1 then
+      check_bezier_ccw p v a b' c'
+    else
+      if c'.2 < ve_top v then
+         Some true
+      else
+         Some false
+end.
