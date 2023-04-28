@@ -34,6 +34,11 @@ Fixpoint bezier (c : nat -> Plane R) (n : nat) (t : R) :=
            t *: (bezier (c \o S) p t)
   end.
 
+Lemma bezier_step_conv c n t :
+  bezier c (S n) t =
+  bezier (c \o S) n t <| t |> bezier c n t.
+Proof. by rewrite /= /conv addrC. Qed.
+
 (* TODO: complain about the wrong error message for the following mistake. *)
 (* Lemma bezier_bernstein2 c t :
   bezier c 2 t =  (bernp 0 1 2 0) *: c 0%N. *)
@@ -649,6 +654,50 @@ apply: (le_lt_trans vtople).
 by move: onv=> /andP[] _ /andP[]; rewrite pq /=.
 Qed.
 
+Lemma conv_num_sg s (a b t : R) :
+   0 < t < 1 -> sgz a = s -> sgz b = s -> sgz ((a : R^o) <| t |> b) = s.
+Proof.
+move=> tint.
+have [ -> <- | agt0 <- | alt0 <-] := sgzP a.
+    have [ -> | // | // ] := sgzP b.
+    by rewrite convmm sgz0.
+  have [ // | bgt0 _ | // ] := sgzP b.
+  rewrite /conv; apply/gtr0_sgz/addr_gt0; apply/mulr_gt0; lra.
+have [ // | // | blt0 _] := sgzP b.
+rewrite /conv; apply/ltr0_sgz; rewrite -oppr_gt0 opprD.
+apply/addr_gt0; rewrite -mulrN; apply/mulr_gt0; lra.
+Qed.
+
+Lemma conv_num_gtl (a b t c : R) :
+  0 < t < 1 -> c < a -> c <= b -> c < (a : R^o) <| t |> b.
+Proof.
+move=> tint clta cleb; rewrite /conv.
+rewrite -[_ *: (a : R^o)]/(t * a).
+rewrite -[_ *: (b : R^o)]/((1 - t) * b).
+rewrite [X in _ < X]
+  (_ : _ = c + ((t * (a - c)) + (1 - t) * (b - c))); last by ring.
+have fact1 : 0 < t * (a - c) by apply: mulr_gt0; lra.
+have fact2 : 0 <= (1 - t) * (b - c) by apply: mulr_ge0; lra.
+lra.
+Qed.
+
+Lemma conv_num_ltr (a b t c : R) :
+  0 < t < 1 -> a < c -> b <= c -> (a : R^o) <| t |> b < c.
+Proof.
+move=> tint clta cleb; rewrite /conv.
+rewrite -[_ *: (a : R^o)]/(t * a).
+rewrite -[_ *: (b : R^o)]/((1 - t) * b).
+rewrite [X in X < _]
+  (_ : _ = c - ((t * (c - a)) + (1 - t) * (c - b))); last by ring.
+have fact1 : 0 < t * (c - a) by apply: mulr_gt0; lra.
+have fact2 : 0 <= (1 - t) * (c - b) by apply: mulr_ge0; lra.
+lra.
+Qed.
+
+Lemma conv_p1 (a b : Plane R) t : (a <| t |> b).1 =
+   ((a.1 : R^o) <| t |> b.1).
+Proof.  by []. Qed.
+
 Lemma safe_bezier2 p1 p2 p3 c1 c2 vert_e u :
   closed_cell_side_limit_ok c1 ->
   closed_cell_side_limit_ok c2 ->
@@ -676,12 +725,20 @@ have llr2 : left_limit c2 < right_limit c2.
   by move: p3in=> /andP[] _ /andP[]; apply: lt_trans.
 have p2belh1 : p2 <<< high c1.
   by apply: (on_vert_edge_under_high_right _ ok1 p2in v1).
+have p2belh2 : p2 <<< high c2.
+  by apply: (on_vert_edge_under_high_left _ ok2 p2in v2).
 have p2abol1 : ~~(p2 <<= low c1).
   by apply: (on_vert_edge_above_low_right _ ok1 p2in v1).
+have p2abol2 : ~~(p2 <<= low c2).
+  by apply: (on_vert_edge_above_low_left _ ok2 p2in v2).
 have bzubelh1 : bezier c 2 u <<< high c1.
   by apply: (on_vert_edge_under_high_right _ ok1 bzuin v1).
 have bzuabol1 : ~~(bezier c 2 u <<= low c1).
   by apply: (on_vert_edge_above_low_right _ ok1 bzuin v1).
+have bzubelh2 : bezier c 2 u <<< high c2.
+  by apply: (on_vert_edge_under_high_left _ ok2 bzuin v2).
+have bzuabol2 : ~~(bezier c 2 u <<= low c2).
+  by apply: (on_vert_edge_above_low_left _ ok2 bzuin v2).
 have [P1 | P2] := ltrP t u.
   apply/orP; left; apply/orP; left.
   set t' := t / u.
@@ -690,4 +747,141 @@ have [P1 | P2] := ltrP t u.
       rewrite /t'; apply divr_ge0; lra.
     rewrite /t' ltr_pdivr_mulr; lra.
   have tt' : t = t' * u by rewrite /t' mulfVK.
-  have := bezier2_dichotomy_l c t' u.
+  have := bezier2_dichotomy_l c t' u; rewrite -tt' /bzt => ->.
+  set p2' := p2 <| u |> p1.
+  set p3' := bezier c 2 u.
+  rewrite [bezier _ _ _](_ : _ = (p3' <| t' |> p2') <| t' |>
+                                 (p2' <| t' |> p1)); last first.
+    by rewrite !bezier_step_conv /= -/p2'.
+  have [-> | t'n0] := eqVneq t' 0; first by rewrite !conv0.
+  have t'int' : 0 < t' < 1 by lra.
+  rewrite /strict_inside_closed -andbA; apply/andP; split.
+    rewrite /point_strictly_under_edge !det_conv.
+    have sgp1 : sgz (det p1 (left_pt (high c1)) (right_pt (high c1))) = -1.
+      by apply:ltr0_sgz; move: p1in=> /andP[] /andP[].
+    have sgp2' : sgz
+             ((det p2 (left_pt (high c1)) (right_pt (high c1)) : R ^o) <|u|> 
+             det p1 (left_pt (high c1)) (right_pt (high c1))) = -1.
+      apply: conv_num_sg=> //.
+      apply: ltr0_sgz; exact p2belh1.
+    rewrite -sgz_lt0; set (tmp := sgz _); suff -> : tmp = -1 by [].
+    rewrite {}/tmp; apply: conv_num_sg => //.
+      apply: conv_num_sg=> //.
+      apply: ltr0_sgz; exact bzubelh1.
+    by apply: conv_num_sg.
+  apply/andP; split.
+    rewrite /point_under_edge -ltNge.
+    rewrite !det_conv.
+    have sgp1 : sgz (det p1 (left_pt (low c1)) (right_pt (low c1))) = 1.
+       by apply:gtr0_sgz; move: p1in=> /andP[] /andP[] _; rewrite -ltNge.
+    have sgp2' : sgz
+             ((det p2 (left_pt (low c1)) (right_pt (low c1)) : R ^o) <|u|> 
+             det p1 (left_pt (low c1)) (right_pt (low c1))) = 1.
+      apply: conv_num_sg=> //.
+      apply: gtr0_sgz; rewrite ltNge; exact p2abol1.
+    rewrite -sgz_gt0; set (tmp := sgz _); suff -> : tmp = 1 by [].
+    rewrite {}/tmp; apply: conv_num_sg => //.
+      apply: conv_num_sg=> //.
+      apply: gtr0_sgz; rewrite ltNge; exact bzuabol1.
+    by apply: conv_num_sg.
+  have vx1 : ve_x vert_e = right_limit c1.
+    by have /andP[_ /eqP ->] := right_vertical_edge_wrt_high llr1 ok1 v1.
+  have lp2' : left_limit c1 < p2'.1.
+    rewrite conv_p1; apply: conv_num_gtl => //.
+      move: p2in=> /andP[] /eqP -> _.
+      by rewrite vx1.
+    by apply: ltW; move: p1in=> /andP[] _ /andP[].
+  apply/andP; split.
+    rewrite conv_p1.
+    apply: conv_num_gtl=> //.
+      rewrite conv_p1.
+      apply: conv_num_gtl=> //; last by apply: ltW.
+      by move: bzuin; rewrite -/p3'=> /andP[] /eqP -> _; rewrite vx1.
+    rewrite conv_p1; apply/ltW/conv_num_gtl=> //; apply/ltW.
+    by move: p1in=> /andP[] _ /andP[].
+  have p2'r : p2'.1 < right_limit c1.
+    rewrite conv_p1 convC.
+    apply: conv_num_ltr; first by lra.
+      by move: p1in=> /andP[] _ /andP[].
+    by move: p2in=> /andP[] /eqP -> _; rewrite vx1.
+  apply: conv_num_ltr;[ done | | apply: ltW].
+    rewrite conv_p1 convC; apply: conv_num_ltr => //; first by lra.
+    by move: bzuin=> /andP[] /eqP -> _; rewrite vx1.
+  apply: conv_num_ltr=> //; apply: ltW.
+  by move: p1in=> /andP[] _ /andP[].
+apply/orP; left; apply/orP; right.
+have {P2}tgtu : u < t by lra.
+set t' := (t - u) / (1 - u).
+have tt' : t = u + t' * (1 - u) by rewrite /t' mulfVK; [ring | lra].
+have := bezier2_dichotomy_r c t' u; rewrite -tt' /bzt => ->.
+have [t1 | tn1] := eqVneq t 1.
+  rewrite /t' /= t1 divff; last by lra.
+ by rewrite subrr !(scale0r, add0r, addr0, scale1r).
+have t'int : 0 < t' < 1.
+  rewrite /t'; apply/andP; split.
+    apply: divr_gt0; lra.
+  by rewrite ltr_pdivr_mulr; lra.
+set p1' := bezier c 2 u.
+set p2' := p3 <| u |> p2.
+rewrite [bezier _ 2 _](_ : _ = (p3 <| t' |> p2') <| t' |> (p2' <| t' |> p1'));
+  last first.
+  by rewrite !bezier_step_conv.
+rewrite /strict_inside_closed -andbA; apply/andP; split.
+rewrite /point_strictly_under_edge !det_conv.
+  have sgp3 : sgz (det p3 (left_pt (high c2)) (right_pt (high c2))) = -1.
+    by apply:ltr0_sgz; move: p3in=> /andP[] /andP[].
+  have sgp2' : sgz
+           ((det p3 (left_pt (high c2)) (right_pt (high c2)) : R ^o) <|u|> 
+             det p2 (left_pt (high c2)) (right_pt (high c2))) = -1.
+    apply: conv_num_sg=> //.
+    apply: ltr0_sgz; exact p2belh2.
+  rewrite -sgz_lt0; set (tmp := sgz _); suff -> : tmp = -1 by [].
+  rewrite {}/tmp; apply: conv_num_sg => //.
+    by apply: conv_num_sg.
+  apply: conv_num_sg=> //.
+  apply: ltr0_sgz; exact bzubelh2.
+apply/andP; split.
+  rewrite /point_under_edge -ltNge.
+  rewrite !det_conv.
+  have sgp3 : sgz (det p3 (left_pt (low c2)) (right_pt (low c2))) = 1.
+     by apply: gtr0_sgz; move: p3in=> /andP[] /andP[] _; rewrite -ltNge.
+  have sgp2' : sgz
+             ((det p3 (left_pt (low c2)) (right_pt (low c2)) : R ^o) <|u|> 
+             det p2 (left_pt (low c2)) (right_pt (low c2))) = 1.
+    apply: conv_num_sg=> //.
+    by apply: gtr0_sgz; rewrite ltNge; exact p2abol2.
+  rewrite -sgz_gt0; set (tmp := sgz _); suff -> : tmp = 1 by [].
+  rewrite {}/tmp; apply: conv_num_sg => //.
+    by apply: conv_num_sg.
+  apply: conv_num_sg=> //.
+  by apply: gtr0_sgz; rewrite ltNge; exact bzuabol2.
+have vx2 : ve_x vert_e = left_limit c2.
+  have /andP[_ /eqP ->] := left_vertical_edge_wrt_high llr2 ok2 v2.
+  rewrite /left_limit; apply/eqP.
+  move: ok2=> /andP[] lc2n0 /andP[].
+  move=> /allP /(_ (head dummy_pt (left_pts c2))) + _; apply.
+  by case : (left_pts c2) lc2n0 => [// | ? ?] _ /=; rewrite inE eqxx.
+have p2'r : p2'.1 < right_limit c2.
+  apply: conv_num_ltr=> //.
+    by move: p3in=>/andP[] _ /andP[].
+  move: p2in=> /andP[] /eqP -> _.
+  by rewrite vx2; apply: ltW.
+apply/andP; split.
+  have p2'l : left_limit c2 < p2'.1.
+    apply: conv_num_gtl=> //.
+      by move: p3in=> /andP[] _ /andP[].
+    by move: p2in=> /andP[] /eqP ->; rewrite vx2.
+  apply: conv_num_gtl;[done | | apply: ltW].
+    apply: conv_num_gtl=> //.
+      by move: p3in=> /andP[] _ /andP[].
+    by apply/ltW.
+  apply: conv_num_gtl=> //.
+  by move: bzuin=> /andP[] /eqP + _; rewrite -/p1' vx2 => ->.
+apply: conv_num_ltr=> //.
+  apply: conv_num_ltr=> //.
+    by move: p3in=> /andP[] _ /andP[].
+  by apply/ltW.
+apply/ltW/conv_num_ltr=> //.
+move: bzuin=> /andP[] + _; rewrite -/p1'=> /eqP ->.
+by apply/ltW; rewrite vx2.
+Qed.
