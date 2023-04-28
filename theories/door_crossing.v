@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect all_algebra all_real_closed reals.
-From mathcomp.algebra_tactics Require Import ring.
+From mathcomp.algebra_tactics Require Import ring lra.
 Require Import casteljau convex counterclockwise intersection.
 
 Set Implicit Arguments.
@@ -665,6 +665,7 @@ Lemma safe_bezier2 p1 p2 p3 c1 c2 vert_e u :
     (strict_inside_closed bzt c2) ||
     on_vert_edge bzt vert_e.
 Proof.
+set c := [fun _ => _ with _].
 move=> ok1 ok2 p1in p3in v1 v2 p2in uin bzuin t tin.
 have un0 : u != 0 by apply: lt0r_neq0; case/andP: uin.
 set bzt := bezier _ 2 t; lazy zeta.
@@ -677,28 +678,16 @@ have p2belh1 : p2 <<< high c1.
   by apply: (on_vert_edge_under_high_right _ ok1 p2in v1).
 have p2abol1 : ~~(p2 <<= low c1).
   by apply: (on_vert_edge_above_low_right _ ok1 p2in v1).
-have bzubelh1 : bezier [fun n => p1 with 1%N |-> p2, 2%N |-> p3] 2 u <<< high c1.
+have bzubelh1 : bezier c 2 u <<< high c1.
   by apply: (on_vert_edge_under_high_right _ ok1 bzuin v1).
-have bzuabol1 : ~~(bezier [fun n => p1 with 1%N |-> p2, 2%N |-> p3] 2 u <<= low c1).
+have bzuabol1 : ~~(bezier c 2 u <<= low c1).
   by apply: (on_vert_edge_above_low_right _ ok1 bzuin v1).
 have [P1 | P2] := ltrP t u.
-   apply/orP; left; apply/orP; left.
-
-  rewrite /point_strictly_under_edge.
-
-  have -> : det p2 (left_pt (high c1)) (right_pt (high c1)) =
-         det p2 (left_pt (high c1)) (last dummy_pt (right_pts c1)) *
-           ((right_pt (high c1)).1 - (left_pt (high c1)).1) / 
-           (right_limit c1 - (left_pt (high c1)).1).
-    rewrite develop_det.
-    rewrite /right_limit /det /get_coord.
-
-
-have [tltu | tgtu'] := boolP(t < u).
-  suff: strict_inside_closed bzt c1 by move=> ->.
+  apply/orP; left; apply/orP; left.
   set t' := t / u.
+  have t'int : 0 <= t' < 1.
+    apply/andP; split.
+      rewrite /t'; apply divr_ge0; lra.
+    rewrite /t' ltr_pdivr_mulr; lra.
   have tt' : t = t' * u by rewrite /t' mulfVK.
-  rewrite /bzt tt' bezier2_dichotomy_l.
-  have [t0 | tn0] := eqVneq t' 0.
-    by rewrite t0 /= subr0 !(scale0r, addr0, add0r, scale1r).
-  
+  have := bezier2_dichotomy_l c t' u.
