@@ -845,7 +845,8 @@ Fixpoint smoothen_aux (s : seq (annotated_point * annotated_point)) :
 match s with
 | nil => nil
 | (a, b) :: nil => straight a b :: nil
-| (a, b) :: (b', c) :: tl => bezier a b c :: smoothen_aux tl
+(* Here we know the anonymous variable to have the same value as b *)
+| (a, b) :: (_ , c) :: tl => bezier a b c :: smoothen_aux tl
 end.
 
 (* Here we move from a sequence of straight line segments given by pairs
