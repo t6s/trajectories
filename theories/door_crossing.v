@@ -34,6 +34,9 @@ Fixpoint bezier (c : nat -> Plane R) (n : nat) (t : R) :=
            t *: (bezier (c \o S) p t)
   end.
 
+Definition f3pt (a b c : Plane R) :=
+  [fun n : nat => a with 1%nat |-> b, 2%nat |-> c].
+
 Lemma bezier_step_conv c n t :
   bezier c (S n) t =
   bezier (c \o S) n t <| t |> bezier c n t.
@@ -55,30 +58,25 @@ rewrite !(scalerA, scalerDr) addrA -scalerDl; congr (_ *:_ + _ *: _).
 by rewrite /bernp !hornerE /= subr0 expr1n invr1; ring.
 Qed.
 
-Lemma bezier2_1 c u : bezier c 1 u = (1 - u) *: c 0%N + u *: c 1%N.
-Proof. by []. Qed.
-
-
-(* The proofs of these lemmas follow a general pattern explained in file casteljau.
-  However, here, we can brute force the proof because we are working with a known
-  low degree. *)
+(* The proofs of these lemmas follow a general pattern explained in file
+  casteljau.  However, here, we can brute force the proof because we are
+  working with a known low degree. *)
 Lemma bezier2_dichotomy_l (c : nat -> Plane R) (t u : R) :
   bezier c 2 (t * u) =
-  bezier [fun n => c n with 1%nat |-> bezier c 1 u, 2%nat |-> bezier c 2 u] 2
-    t.
+  bezier (f3pt (c 0%nat) (bezier c 1 u) (bezier c 2 u)) 2 t.
 Proof.
 rewrite /bezier /= !scalerDr !scalerA !addrA.
-(* Make sure all instance of c 0 are grouped on the left and c 0 is factored out. *)
+(* Make sure all instance of c 0 are grouped on the left and c 0 is
+   factored out. *)
 rewrite !(addrAC _ (_ *: c (S O)) (_ *: c O)) -!scalerDl.
 rewrite -!addrA; congr (_ *: _ + _); first by ring.
-(* Now factor out all instances of c 1 *)
+(* Now factor out all instances of c 1. *)
 rewrite !addrA -!scalerDl; congr (_ *: _ + _ *: _); ring.
 Qed.
 
 Lemma bezier2_dichotomy_r (c : nat -> Plane R) (t u : R) :
   bezier c 2 (u + t * (1 - u)) =
-  bezier [fun n => c n with 0%N |-> bezier c 2 u, 1%N |-> bezier (c \o S) 1 u] 2
-    t.
+  bezier (f3pt (bezier c 2 u) (bezier (c \o S) 1 u) (c 2%nat)) 2 t.
 Proof.
 rewrite /bezier /= !scalerDr !scalerA !addrA.
 (* There is only one instance of c 0 on the left, we can process it directly *)
@@ -95,7 +93,9 @@ Record edge := Bedge
     edge_cond : left_pt.1 < right_pt.1}.
 
 Record cell :=
-  { left_pts : seq (Plane R); right_pts : seq (Plane R); low : edge; high : edge}.
+  { left_pts : seq (Plane R);
+    right_pts : seq (Plane R);
+    low : edge; high : edge}.
 
 Definition valid_edge : edge -> Plane R -> bool :=
   fun g p => (left_pt g).1 <= p.1 <= (right_pt g).1.
@@ -131,7 +131,8 @@ Definition point_strictly_under_edge (p : Plane R) (e : edge) : bool :=
   det p (left_pt e) (right_pt e) < 0.
 
 Notation "p '<<=' e" := (point_under_edge p e)( at level 70, no associativity).
-Notation "p '<<<' e" := (point_strictly_under_edge p e)(at level 70, no associativity).
+Notation "p '<<<' e" := (point_strictly_under_edge p e)
+       (at level 70, no associativity).
 
 Definition strict_inside_closed (p : Plane R) (c : cell) :=
   (p <<< high c) && (~~(p <<= low c)) &&
@@ -225,9 +226,11 @@ Lemma left_vertical_edge_wrt_high c v :
   ((left_pt (high c)).1 <= ve_x v < (right_pt (high c)).1) &&
   (ve_x v == (head dummy_pt (left_pts c)).1).
 Proof.
-move=> llr /andP[] leftn0 /andP[] /allP samexl /andP[] sortl /andP[] lonh /andP[] lonl.
+move=> llr /andP[] leftn0 /andP[] /allP samexl /andP[] sortl.
+move=> /andP[] lonh /andP[] lonl.
 move=> /andP[] rightn0 /andP[] /allP samexr /andP[] sortr /andP[] ronl ronh vin.
-have {}samexl : {in left_pts c, forall p, (head dummy_pt (left_pts c)).1 = p.1 }.
+have {}samexl :
+   {in left_pts c, forall p, (head dummy_pt (left_pts c)).1 = p.1 }.
   move=> x xin; rewrite (eqP (samexl x xin)).
   rewrite -(eqP (samexl (head dummy_pt (left_pts c)) _)) //.
   by move: leftn0; case (left_pts c)=> //= s l _; rewrite inE eqxx.
@@ -235,7 +238,8 @@ have vxleft : ve_x v = left_limit c.
   move: vin.
   rewrite /left_limit /cell_safe_exits_left.
   elim: (left_pts c) leftn0 samexl => [ // | e1 [// | e2 tl] Ih] _ /= samexl.
-  rewrite inE=> /orP[/eqP -> /= | vin]; first by apply: samexl; rewrite inE mem_last orbT.
+  rewrite inE=> /orP[/eqP -> /= | vin].
+    by apply: samexl; rewrite inE mem_last orbT.
   apply: (Ih isT)=> /=.
      move=> x xin. rewrite -(samexl e2); last by rewrite !inE eqxx orbT.
      by apply: samexl; rewrite inE xin orbT.
@@ -273,7 +277,8 @@ Lemma right_vertical_edge_wrt_high c v :
   ((left_pt (high c)).1 < ve_x v <= (right_pt (high c)).1) &&
   (ve_x v == (last dummy_pt (right_pts c)).1).
 Proof.
-move=> llr /andP[] leftn0 /andP[] /allP samexl /andP[] sortl /andP[] lonh /andP[] lonl.
+move=> llr /andP[] leftn0 /andP[] /allP samexl /andP[] sortl.
+move=>/andP[] lonh /andP[] lonl.
 move=> /andP[] rightn0 /andP[] /allP samexr /andP[] sortr /andP[] ronl ronh vin.
 have vxright : ve_x v = right_limit c.
   move: vin.
@@ -291,7 +296,8 @@ have vxright : ve_x v = right_limit c.
      move=> x xin.
      rewrite (eqP (samexr x _)); last by rewrite mem_rcons inE xin orbT.
      by rewrite 3!headI /=.
-  rewrite [head _ (rcons _ _)](_ : _ = head dummy_pt (rcons lh e2)) in vin; last first.
+  rewrite
+   [head _ (rcons _ _)](_ : _ = head dummy_pt (rcons lh e2)) in vin; last first.
     by rewrite 3!headI /=.
   by rewrite rev_rcons; apply: vin.
 apply/andP; split; last by rewrite vxright.
@@ -332,9 +338,10 @@ Lemma left_vertical_edge_wrt_low c v :
   ((left_pt (low c)).1 <= ve_x v < (right_pt (low c)).1) &&
   (ve_x v == (last dummy_pt (left_pts c)).1).
 Proof.
-move=> llr /andP[] leftn0 /andP[] /allP samexl /andP[] sortl /andP[] lonh /andP[] lonl.
+move=> llr /andP[] leftn0 /andP[] /allP samexl /andP[] sortl.
+move=>/andP[] lonh /andP[] lonl.
 move=> /andP[] rightn0 /andP[] /allP samexr /andP[] sortr /andP[] ronl ronh vin.
-have {}samexl : {in left_pts c, forall p, (head dummy_pt (left_pts c)).1 = p.1 }.
+have {}samexl: {in left_pts c, forall p, (head dummy_pt (left_pts c)).1 = p.1 }.
   move=> x xin; rewrite (eqP (samexl x xin)).
   rewrite -(eqP (samexl (head dummy_pt (left_pts c)) _)) //.
   by move: leftn0; case (left_pts c)=> //= s l _; rewrite inE eqxx.
@@ -342,7 +349,8 @@ have vxleft : ve_x v = left_limit c.
   move: vin.
   rewrite /left_limit /cell_safe_exits_left.
   elim: (left_pts c) leftn0 samexl => [ // | e1 [// | e2 tl] Ih] _ /= samexl.
-  rewrite inE=> /orP[/eqP -> /= | vin]; first by apply: samexl; rewrite inE mem_last orbT.
+  rewrite inE=> /orP[/eqP -> /= | vin].
+    by apply: samexl; rewrite inE mem_last orbT.
   apply: (Ih isT)=> /=.
      move=> x xin. rewrite -(samexl e2); last by rewrite !inE eqxx orbT.
      by apply: samexl; rewrite inE xin orbT.
@@ -380,7 +388,8 @@ Lemma right_vertical_edge_wrt_low c v :
   ((left_pt (low c)).1 < ve_x v <= (right_pt (low c)).1) &&
   (ve_x v == (head dummy_pt (right_pts c)).1).
 Proof.
-move=> llr /andP[] leftn0 /andP[] /allP samexl /andP[] sortl /andP[] lonh /andP[] lonl.
+move=> llr /andP[] leftn0 /andP[] /allP samexl /andP[] sortl.
+move=>/andP[] lonh /andP[] lonl.
 move=> /andP[] rightn0 /andP[] /allP samexr /andP[] sortr /andP[] ronl ronh vin.
 have vxright : ve_x v = right_limit c.
   move: vin.
@@ -398,7 +407,8 @@ have vxright : ve_x v = right_limit c.
      move=> x xin.
      rewrite (eqP (samexr x _)); last by rewrite mem_rcons inE xin orbT.
      by rewrite 3!headI /=.
-  rewrite [head _ (rcons _ _)](_ : _ = head dummy_pt (rcons lh e2)) in vin; last first.
+  rewrite [head _ (rcons _ _)]
+    (_ : _ = head dummy_pt (rcons lh e2)) in vin; last first.
     by rewrite 3!headI /=.
   by rewrite rev_rcons; apply: vin.
 apply/andP; split; last first.
@@ -482,12 +492,16 @@ Lemma on_vert_edge_under_high_left v c p :
   p <<< high c.
 Proof.
 move=> llr cok onv vin.
-have /andP[/andP[vtople xcond] xcond2] := left_vertical_edge_wrt_high llr cok vin.
-move: (cok)=> /andP[] leftn0 /andP[] samexl /andP[] sortl /andP[] lonh REST.
+have /andP[/andP[vtople xcond] xcond2] :=
+   left_vertical_edge_wrt_high llr cok vin.
+move: (cok)=> /andP[] leftn0 /andP[] samexl /andP[] sortl /andP[] lonh _.
 rewrite /point_strictly_under_edge.
-set l := ((right_pt (high c)).1 - p.1) / ((right_pt (high c)).1 - (left_pt (high c)).1).
-set q := ((right_pt (high c)).1 - l * ((right_pt (high c)).1 - (left_pt (high c)).1),
-        (right_pt (high c)).1 - l * ((right_pt (high c)).2 - (left_pt (high c)).2)).
+set l := ((right_pt (high c)).1 - p.1) /
+            ((right_pt (high c)).1 - (left_pt (high c)).1).
+set q := ((right_pt (high c)).1 - l * 
+             ((right_pt (high c)).1 - (left_pt (high c)).1),
+        (right_pt (high c)).1 - l * 
+           ((right_pt (high c)).2 - (left_pt (high c)).2)).
 case pq : p => [p1 p2].
 case lq : (left_pt (high c)) => [q1 q2].
 case rq : (right_pt (high c)) => [r1 r2].
@@ -507,7 +521,8 @@ have <- : p1 = r1 + l * (q1 - r1).
   by have := edge_cond (high c); rewrite lq rq abs lt_irreflexive.
 rewrite detVert lv.
 rewrite nmulr_llt0; last by rewrite subr_lt0.
-have proj2: (head dummy_pt (left_pts c)).2 = r2 + (r1 - p1) / (r1 - q1) * (q2 - r2).
+have proj2: (head dummy_pt (left_pts c)).2 =
+               r2 + (r1 - p1) / (r1 - q1) * (q2 - r2).
   have ecnd : (left_pt (high c)).1 != (right_pt (high c)).1.
     by apply/eqP=> abs; have := edge_cond (high c); rewrite abs lt_irreflexive.
   have := vert_projr (head dummy_pt (left_pts c)) ecnd.
@@ -526,8 +541,10 @@ Lemma on_vert_edge_above_low_left v c p :
   ~~ (p <<= low c).
 Proof.
 move=> llr cok onv vin.
-have /andP[/andP[vtople xcond] xcond2] := left_vertical_edge_wrt_low llr cok vin.
-move: (cok)=> /andP[] leftn0 /andP[] samexl /andP[] sortl /andP[] _ /andP[] lonl REST.
+have /andP[/andP[vtople xcond] xcond2] :=
+  left_vertical_edge_wrt_low llr cok vin.
+move: (cok)=> /andP[] leftn0 /andP[] samexl /andP[] sortl.
+move=>/andP[] _ /andP[] lonl _.
 rewrite /point_under_edge -ltNge.
 set l := ((right_pt (low c)).1 - p.1) / ((right_pt (low c)).1 - (left_pt (low c)).1).
 set q := ((right_pt (low c)).1 - l * ((right_pt (low c)).1 - (left_pt (low c)).1),
@@ -707,14 +724,13 @@ Lemma safe_bezier2 p1 p2 p3 c1 c2 vert_e u :
   vert_e \in cell_safe_exits_left c2 ->
   on_vert_edge p2 vert_e ->
   0 < u < 1 ->
-  on_vert_edge (bezier [fun  n => p1 with 1%N |-> p2, 2%N |-> p3] 2 u) vert_e ->
+  on_vert_edge (bezier (f3pt p1 p2 p3) 2 u) vert_e ->
   forall t, 0 <= t <= 1 ->
-    let bzt := bezier [fun  n => p1 with 1%N |-> p2, 2%N |-> p3] 2 t in
+    let bzt := bezier (f3pt p1 p2 p3) 2 t in
     (strict_inside_closed bzt c1) ||
     (strict_inside_closed bzt c2) ||
     on_vert_edge bzt vert_e.
 Proof.
-set c := [fun _ => _ with _].
 move=> ok1 ok2 p1in p3in v1 v2 p2in uin bzuin t tin.
 have un0 : u != 0 by apply: lt0r_neq0; case/andP: uin.
 set bzt := bezier _ 2 t; lazy zeta.
@@ -731,13 +747,13 @@ have p2abol1 : ~~(p2 <<= low c1).
   by apply: (on_vert_edge_above_low_right _ ok1 p2in v1).
 have p2abol2 : ~~(p2 <<= low c2).
   by apply: (on_vert_edge_above_low_left _ ok2 p2in v2).
-have bzubelh1 : bezier c 2 u <<< high c1.
+have bzubelh1 : bezier (f3pt p1 p2 p3) 2 u <<< high c1.
   by apply: (on_vert_edge_under_high_right _ ok1 bzuin v1).
-have bzuabol1 : ~~(bezier c 2 u <<= low c1).
+have bzuabol1 : ~~(bezier (f3pt p1 p2 p3) 2 u <<= low c1).
   by apply: (on_vert_edge_above_low_right _ ok1 bzuin v1).
-have bzubelh2 : bezier c 2 u <<< high c2.
+have bzubelh2 : bezier (f3pt p1 p2 p3) 2 u <<< high c2.
   by apply: (on_vert_edge_under_high_left _ ok2 bzuin v2).
-have bzuabol2 : ~~(bezier c 2 u <<= low c2).
+have bzuabol2 : ~~(bezier (f3pt p1 p2 p3) 2 u <<= low c2).
   by apply: (on_vert_edge_above_low_left _ ok2 bzuin v2).
 have [P1 | P2] := ltrP t u.
   apply/orP; left; apply/orP; left.
@@ -747,9 +763,9 @@ have [P1 | P2] := ltrP t u.
       rewrite /t'; apply divr_ge0; lra.
     rewrite /t' ltr_pdivr_mulr; lra.
   have tt' : t = t' * u by rewrite /t' mulfVK.
-  have := bezier2_dichotomy_l c t' u; rewrite -tt' /bzt => ->.
+  have := bezier2_dichotomy_l (f3pt p1 p2 p3) t' u; rewrite -tt' /bzt => ->.
   set p2' := p2 <| u |> p1.
-  set p3' := bezier c 2 u.
+  set p3' := bezier (f3pt p1 p2 p3) 2 u.
   rewrite [bezier _ _ _](_ : _ = (p3' <| t' |> p2') <| t' |>
                                  (p2' <| t' |> p1)); last first.
     by rewrite !bezier_step_conv /= -/p2'.
@@ -813,7 +829,7 @@ apply/orP; left; apply/orP; right.
 have {P2}tgtu : u < t by lra.
 set t' := (t - u) / (1 - u).
 have tt' : t = u + t' * (1 - u) by rewrite /t' mulfVK; [ring | lra].
-have := bezier2_dichotomy_r c t' u; rewrite -tt' /bzt => ->.
+have := bezier2_dichotomy_r (f3pt p1 p2 p3) t' u; rewrite -tt' /bzt => ->.
 have [t1 | tn1] := eqVneq t 1.
   rewrite /t' /= t1 divff; last by lra.
  by rewrite subrr !(scale0r, add0r, addr0, scale1r).
@@ -821,7 +837,7 @@ have t'int : 0 < t' < 1.
   rewrite /t'; apply/andP; split.
     apply: divr_gt0; lra.
   by rewrite ltr_pdivr_mulr; lra.
-set p1' := bezier c 2 u.
+set p1' := bezier (f3pt p1 p2 p3) 2 u.
 set p2' := p3 <| u |> p2.
 rewrite [bezier _ 2 _](_ : _ = (p3 <| t' |> p2') <| t' |> (p2' <| t' |> p1'));
   last first.
@@ -889,9 +905,10 @@ Qed.
 Definition midpoint (a b : Plane R) := a <| 1/2 |> b.
 
 Definition mkedge (a b : Plane R) :=
-  match (exist (fun v => a.1 < b.1 == v) (a.1 < b.1) eqxx) with
+  match (exist (fun v => a.1 < b.1 = v) (a.1 < b.1) erefl) with
   | (exist true h) => Bedge h
-  | _ => Bedge 
+  | _ => @Bedge (0, 0) (1, 0) ltr01
+  end.
 
 Fixpoint check_bezier_ccw (fuel : nat) (v : vert_edge)
   (a b c : Plane R) : 
@@ -900,13 +917,11 @@ match fuel with
 | O => None
 | S p =>
   let top_edge := (ve_x v, ve_top v) in
-  let a := left_pt e in
-  let c := right_pt e in
-  if negb (point_under_edge top_edge (Bedge a c)) then
+  if negb (point_under_edge top_edge (mkedge a c)) then
     Some true
   else if
-     point_under_edge top_edge (Bedge a b) ||
-     point_under_edge top_edge (Bedge b c)
+     point_under_edge top_edge (mkedge a b) ||
+     point_under_edge top_edge (mkedge b c)
   then 
     Some false
   else
@@ -923,3 +938,121 @@ match fuel with
       else
          Some false
 end.
+
+Lemma bezier_on_vertical_line (a b c : Plane R) (v : vert_edge) :
+  a.1 < b.1 < c.1 ->
+  {u | u \in `]0, 1[ & (bezier (f3pt a b c) 2 u).1 = b.1}.
+Proof.
+move=> abc.
+set bezierx :=
+  \sum_(i < 3) ((f3pt a b c) i).1 *: bernp 0 1 2 i - b.1%:P.
+have bezierxq t :
+  (bezier (f3pt a b c) 2 t).1 = (bezierx + b.1%:P).[t].
+  rewrite bezier_bernstein2 /bezierx.
+  rewrite addrNK !big_ord_recr /= !big_ord0 /= !add0r.
+  have expandscale (x y : R) : x *: (y : R^o) = x * y by [].
+  rewrite 3![in RHS] hornerE !hornerZ !expandscale.
+  (* Problem with the failure of ring here. *)
+  Fail ring.
+  by rewrite (mulrC a.1) (mulrC b.1) (mulrC c.1).
+have bz0 : bezier (f3pt a b c) 2 0 = a.
+  by rewrite !bezier_step_conv /= !conv0.
+have bz1 : bezier (f3pt a b c) 2 1 = c.
+  by rewrite !bezier_step_conv /= !conv1.
+have : bezierx.[0] < 0.
+  move: (bezierxq 0); rewrite bz0 hornerE [X in _ + X]hornerE.
+  move=> /eqP; rewrite -subr_eq=> /eqP <-.
+  by rewrite subr_lt0; case/andP: abc.
+have : 0 < bezierx.[1].
+  move: (bezierxq 1); rewrite bz1 hornerE [X in _ + X]hornerE.
+  move=> /eqP; rewrite -subr_eq=> /eqP <-.
+  by rewrite subr_gt0; case/andP: abc.
+move=> /gtr0_sg sg1 /ltr0_sg sg0.
+have sgM : Num.sg bezierx.[0] * Num.sg bezierx.[1] = -1.
+  by rewrite sg1 sg0 mulr1.
+have [u uint /rootP ur] := ivt_sign ler01 sgM.
+exists u=> //.
+by rewrite bezierxq hornerE ur add0r hornerE.
+Qed.
+
+(*  In triangle p q r, the distance from r to its projection on
+  line pq is det p q r / (q.1 - p.1) *)
+Fact try1 (p q r : Plane R) :
+  det p q r = (r.2 - q.2) * (q.1 - p.1) - (r.1 - q.1) * (q.2 - p.2).
+Proof.
+move: p q r=> [p1 p2][q1 q2][r1 r2].
+rewrite /= develop_det /=; ring.
+Qed.
+
+Fact try2 (a b c p : Plane R) t: 
+  a.1 < b.1 < c.1 ->
+  det a b p = 0 ->
+  p.1 = (bezier (f3pt a b c) 2 t).1 ->
+  (bezier (f3pt a b c) 2 t).2 - p.2 =
+    t ^ 2 * det a b c / (t ^ 2 * (b.1 - a.1)).
+Proof.
+move=> abc /eqP. 
+rewrite vert_projr; last by lra.
+move=> /eqP /[dup] palign -> projP.
+have dba : b.1 - a.1 != 0 by lra.
+apply: (mulIf dba).
+Admitted.
+(* rewrite mulfVK // mulrBl.
+rewrite (mulrDl b.2) (mulrAC _ _ (b.1 - a.1)) mulfVK //.
+rewrite !bezier_step_conv try1 /= !scalerDr !scalerA.
+have tmp x (y : R^o) : x *: y = x * y by [].
+rewrite !(tmp, mulrBr, mulrBl, mulr1, mul1r, addrA).
+rewrite -[t * t]/(t ^ 2).
+rewrite !mulrDl !mulrA -!addrA.
+congr (_ + _).
+rewrite !mulNr !addrA.
+rewrite !(mulrAC _ _.2 _.1) !(mulrC (_.2) (_.1)).
+rewrite (addrC _ (-(t ^ 2 * b.1 * b.2))) -!addrA; congr (_ + _).
+rewrite !(opprB, opprD, addrA, opprK).
+
+rewrite !(addrAC _ (t ^ 2 * b.1 * b.2)).
+rewrite !(addrAC _ (- (t ^ 2 * c.1 * b.2))).
+rewrite (addrC _ (t ^ 2 * a.1 * b.2)); !addrA.
+rewrite !(addrAC _ _ (t * b.1 * b.2)).
+rewrite addrK.
+rewrite (addrC (t * _.1 * _.2)) (addrAC _ (t ^ 2 * _ * _) (t * _.1 * _)) . *)
+Lemma safe_bezier_ccw (a b c : Plane R) (v : vert_edge) :
+  ccw a b c ->
+  a.1 < b.1 < c.1 ->
+  a.1 < ve_x v < c.1 ->
+  ~~((ve_x v, ve_top v) <<= mkedge a c) ->
+  {u | u \in `] 0, 1[ & 
+    on_vert_edge (bezier (f3pt a b c) 2 u) v}.
+Proof.
+move=> abc bint vint topP.
+set bezierx :=
+  \sum_(i < 3) ((f3pt a b c) i).1 *: bernp 0 1 2 i - (ve_x v)%:P.
+have bezierxq t :
+  (bezier (f3pt a b c) 2 t).1 = (bezierx + (ve_x v)%:P).[t].
+  rewrite bezier_bernstein2 /bezierx.
+  rewrite addrNK !big_ord_recr /= !big_ord0 /= !add0r.
+  have expandscale (x y : R) : x *: (y : R^o) = x * y by [].
+  rewrite 3![in RHS] hornerE !hornerZ !expandscale.
+  (* Problem with the failure of ring here. *)
+  Fail ring.
+  by rewrite (mulrC a.1) (mulrC b.1) (mulrC c.1).
+have bz0 : bezier (f3pt a b c) 2 0 = a.
+  by rewrite !bezier_step_conv /= !conv0.
+have bz1 : bezier (f3pt a b c) 2 1 = c.
+  by rewrite !bezier_step_conv /= !conv1.
+have : bezierx.[0] < 0.
+  move: (bezierxq 0); rewrite bz0 hornerE [X in _ + X]hornerE.
+  move=> /eqP; rewrite -subr_eq=> /eqP <-.
+  by rewrite subr_lt0; case/andP: vint.
+have : 0 < bezierx.[1].
+  move: (bezierxq 1); rewrite bz1 hornerE [X in _ + X]hornerE.
+  move=> /eqP; rewrite -subr_eq=> /eqP <-.
+  by rewrite subr_gt0; case/andP: vint.
+move=> /gtr0_sg sg1 /ltr0_sg sg0.
+have sgM : Num.sg bezierx.[0] * Num.sg bezierx.[1] = -1.
+  by rewrite sg1 sg0 mulr1.
+have [u uint /rootP ur] := ivt_sign ler01 sgM.
+exists u=> //.
+have cndx : (bezier (f3pt a b c) 2 u).1 = ve_x v.
+  by rewrite bezierxq hornerE ur add0r hornerE.
+rewrite /on_vert_edge cndx eqxx andTb.
