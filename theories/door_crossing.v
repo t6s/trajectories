@@ -904,11 +904,23 @@ Qed.
 
 Definition midpoint (a b : Plane R) := a <| 1/2 |> b.
 
-Definition mkedge (a b : Plane R) :=
-  match (exist (fun v => a.1 < b.1 = v) (a.1 < b.1) erefl) with
-  | (exist true h) => Bedge h
-  | _ => @Bedge (0, 0) (1, 0) ltr01
-  end.
+Definition mkedge_aux (a b : Plane R) : {e : edge | 
+     forall h : a.1 < b.1, e = Bedge h}.
+case (boolP (a.1 < b.1)).
+move=> h; exists (Bedge h)=> h0.
+  by rewrite (bool_irrelevance h h0).
+move=> not_edge.
+exists (@Bedge (0, 0) (1, 0) (ltr01 : (0,0).1 < (1, 0).1)).
+by move=> h; case: (negP not_edge).
+Defined.
+
+Definition mkedge (a b : Plane R) := sval (mkedge_aux a b).
+
+Lemma mkedgeE (a b : Plane R) (h : a.1 < b.1) :
+   mkedge a b = Bedge h.
+Proof.
+rewrite /mkedge; case: (mkedge_aux a b)=> v Pv /=; apply: Pv.
+Qed.
 
 Fixpoint check_bezier_ccw (fuel : nat) (v : vert_edge)
   (a b c : Plane R) : 
@@ -977,82 +989,142 @@ Qed.
 
 (*  In triangle p q r, the distance from r to its projection on
   line pq is det p q r / (q.1 - p.1) *)
-Fact try1 (p q r : Plane R) :
-  det p q r = (r.2 - q.2) * (q.1 - p.1) - (r.1 - q.1) * (q.2 - p.2).
+Lemma diff_vert_y  (a b c c' : Plane R) :
+  a.1 != b.1 ->
+  c' = (c.1, a.2 + (c.1 - a.1) / (b.1 - a.1) * (b.2 - a.2)) ->
+  (c.2 - c'.2 ) = det a b c / (b.1 - a.1).
 Proof.
-move: p q r=> [p1 p2][q1 q2][r1 r2].
-rewrite /= develop_det /=; ring.
+intros anb c'def.
+have dn0 : b.1 - (a.1 : R^o) != 0.
+  by rewrite subr_eq0 eq_sym.
+rewrite c'def /= (mulrAC _ _ (b.2 - a.2)) opprD addrA.
+apply: (mulIf dn0); rewrite mulrBl !mulfVK //.
+rewrite det_scalar_productE /rotate /scalar_product /= mulrN.
+by rewrite mulrC; congr (_ - _); rewrite mulrC.
 Qed.
 
-Fact try2 (a b c p : Plane R) t: 
+Lemma height_bezier2 (a b c p : Plane R) t: 
   a.1 < b.1 < c.1 ->
+  (* p is the vertical projection of bezier ... t on the straight line ab *)
   det a b p = 0 ->
   p.1 = (bezier (f3pt a b c) 2 t).1 ->
   (bezier (f3pt a b c) 2 t).2 - p.2 =
-    t ^ 2 * det a b c / (t ^ 2 * (b.1 - a.1)).
+  t ^ 2 * det a b c / (b.1 - a.1).
 Proof.
-move=> abc /eqP. 
+move=> abcdq p1q palign.
+(* c' is the vertical projection of c on the straight line ab. *)
+set c' := (c.1, a.2 + (c.1 - a.1) / (b.1 - a.1) * (b.2 - a.2)).
+have anb : a.1 != b.1 by lra.
+rewrite -[RHS]mulrA -(diff_vert_y anb erefl).
+move: p1q palign => /eqP.
 rewrite vert_projr; last by lra.
 move=> /eqP /[dup] palign -> projP.
+rewrite (mulrAC _ _ (b.2 - a.2)).
 have dba : b.1 - a.1 != 0 by lra.
 apply: (mulIf dba).
-Admitted.
-(* rewrite mulfVK // mulrBl.
-rewrite (mulrDl b.2) (mulrAC _ _ (b.1 - a.1)) mulfVK //.
-rewrite !bezier_step_conv try1 /= !scalerDr !scalerA.
+rewrite mulrBl (mulrDl b.2) mulfVK // projP.
+rewrite (mulrBr (t ^ 2)) (mulrBl (b.1 - a.1)).
+have tmp1 : t ^ 2 * c'.2 * (b.1 - a.1) =
+   t ^ 2 * (a.2 * ( b.1 - a.1) + (c.1 - a.1) * (b.2 - a.2)).
+  rewrite -mulrA; congr (_ * _).
+  by rewrite /= mulrDl (mulrAC _ _ (b.1 - a.1)) mulfVK.
+rewrite !bezier_step_conv /=.
 have tmp x (y : R^o) : x *: y = x * y by [].
-rewrite !(tmp, mulrBr, mulrBl, mulr1, mul1r, addrA).
-rewrite -[t * t]/(t ^ 2).
-rewrite !mulrDl !mulrA -!addrA.
-congr (_ + _).
-rewrite !mulNr !addrA.
-rewrite !(mulrAC _ _.2 _.1) !(mulrC (_.2) (_.1)).
-rewrite (addrC _ (-(t ^ 2 * b.1 * b.2))) -!addrA; congr (_ + _).
-rewrite !(opprB, opprD, addrA, opprK).
+rewrite !tmp tmp1.
+ring.
+Qed.
 
-rewrite !(addrAC _ (t ^ 2 * b.1 * b.2)).
-rewrite !(addrAC _ (- (t ^ 2 * c.1 * b.2))).
-rewrite (addrC _ (t ^ 2 * a.1 * b.2)); !addrA.
-rewrite !(addrAC _ _ (t * b.1 * b.2)).
-rewrite addrK.
-rewrite (addrC (t * _.1 * _.2)) (addrAC _ (t ^ 2 * _ * _) (t * _.1 * _)) . *)
-Lemma safe_bezier_ccw (a b c : Plane R) (v : vert_edge) :
+Lemma safe_bezier_ccw_corner_side (a b c : Plane R) (v : vert_edge) 
+  (u : R):
+  ccw a b c ->
+  a.1 < b.1 < c.1 ->
+  a.1 < ve_x v < c.1 ->
+  on_vert_edge b v ->
+  u \in `]0, 1[ ->
+  (bezier (f3pt a b c) 2 u).1 = ve_x v ->
+  ve_bot v < (bezier (f3pt a b c) 2 u).2.
+Proof.
+move=> abc abc1 avc bon uin bzx.
+move: (bon) => /andP[] /eqP bx /andP[]bl bh.
+apply: (lt_trans bl).
+rewrite -subr_gt0.
+have abb : det a b b = 0.
+  by rewrite det_cyclique det_alternate.
+have bzxb : b.1 = (bezier (f3pt a b c) 2 u).1 by rewrite bzx.
+rewrite (height_bezier2 abc1 abb bzxb).
+apply: divr_gt0; last by lra.
+apply: mulr_gt0; last by [].
+rewrite in_itv /= in uin.
+have tmp : 0 < u < 1 by exact uin.
+apply: mulr_gt0; lra.
+Qed.
+
+Lemma under_proj e p :
+   valid_edge e p -> (p <<= e) = (p.2 <= (left_pt e).2 +
+        (p.1 - (left_pt e).1) * ((right_pt e).2 - (left_pt e).2) /
+          ((right_pt e).1 - (left_pt e).1)).
+Proof.
+move=> vep.
+rewrite /point_under_edge det_cyclique.
+have ecnd := edge_cond e.
+have ecnd' : (left_pt e).1 != (right_pt e).1 by lra.
+set p' := (p.1, (left_pt e).2 + (p.1 - (left_pt e).1) /
+                ((right_pt e).1 - (left_pt e).1) *
+                    ((right_pt e).2 - (left_pt e).2)).
+have := diff_vert_y ecnd'=> /(_ p p' erefl) /eqP.
+rewrite subr_eq=> /eqP ->; rewrite /p' /=.
+rewrite addrA (addrC _ (left_pt e).2) -!addrA.
+rewrite ler_add2.
+rewrite addrC -ler_subr_addl mulrAC addrN.
+rewrite pmulr_lle0 // invr_gt0; lra.
+Qed.
+
+Lemma safe_bezier_ccw (a b c : Plane R) (v : vert_edge) (u : R) :
   ccw a b c ->
   a.1 < b.1 < c.1 ->
   a.1 < ve_x v < c.1 ->
   ~~((ve_x v, ve_top v) <<= mkedge a c) ->
-  {u | u \in `] 0, 1[ & 
-    on_vert_edge (bezier (f3pt a b c) 2 u) v}.
+  u \in `]0, 1[ ->
+  (bezier (f3pt a b c) 2 u).1 = ve_x v ->
+  ve_bot v < (bezier (f3pt a b c) 2 u).2 ->
+  on_vert_edge (bezier (f3pt a b c) 2 u) v.
 Proof.
-move=> abc bint vint topP.
-set bezierx :=
-  \sum_(i < 3) ((f3pt a b c) i).1 *: bernp 0 1 2 i - (ve_x v)%:P.
-have bezierxq t :
-  (bezier (f3pt a b c) 2 t).1 = (bezierx + (ve_x v)%:P).[t].
-  rewrite bezier_bernstein2 /bezierx.
-  rewrite addrNK !big_ord_recr /= !big_ord0 /= !add0r.
-  have expandscale (x y : R) : x *: (y : R^o) = x * y by [].
-  rewrite 3![in RHS] hornerE !hornerZ !expandscale.
-  (* Problem with the failure of ring here. *)
-  Fail ring.
-  by rewrite (mulrC a.1) (mulrC b.1) (mulrC c.1).
-have bz0 : bezier (f3pt a b c) 2 0 = a.
-  by rewrite !bezier_step_conv /= !conv0.
-have bz1 : bezier (f3pt a b c) 2 1 = c.
-  by rewrite !bezier_step_conv /= !conv1.
-have : bezierx.[0] < 0.
-  move: (bezierxq 0); rewrite bz0 hornerE [X in _ + X]hornerE.
-  move=> /eqP; rewrite -subr_eq=> /eqP <-.
-  by rewrite subr_lt0; case/andP: vint.
-have : 0 < bezierx.[1].
-  move: (bezierxq 1); rewrite bz1 hornerE [X in _ + X]hornerE.
-  move=> /eqP; rewrite -subr_eq=> /eqP <-.
-  by rewrite subr_gt0; case/andP: vint.
-move=> /gtr0_sg sg1 /ltr0_sg sg0.
-have sgM : Num.sg bezierx.[0] * Num.sg bezierx.[1] = -1.
-  by rewrite sg1 sg0 mulr1.
-have [u uint /rootP ur] := ivt_sign ler01 sgM.
-exists u=> //.
-have cndx : (bezier (f3pt a b c) 2 u).1 = ve_x v.
-  by rewrite bezierxq hornerE ur add0r hornerE.
-rewrite /on_vert_edge cndx eqxx andTb.
+move=> abc bint vint topP uin /[dup] bzx /eqP bzxb bzb.
+rewrite /on_vert_edge bzxb bzb 2!andTb.
+have ac_cond : a.1 < c.1 by lra.
+have vav : valid_edge (mkedge a c) (ve_x v, ve_top v).
+  rewrite/valid_edge mkedgeE [(left_pt _).1]/= [(right_pt _).1]/=.
+  by rewrite ?ltW //; move: vint=> /andP[].
+move: topP.
+rewrite (under_proj vav) -ltNge; apply le_lt_trans.
+rewrite (_ : (ve_x v, ve_top v).1 = (bezier (f3pt a b c) 2 u).1); last first.
+  by rewrite bzx.
+rewrite -under_proj; last by rewrite /valid_edge bzx; exact: vav.
+rewrite /point_under_edge.
+rewrite bezier_step_conv.
+have vacp : valid_edge (mkedge a c) (bezier (f3pt a b c) 2 u).
+  rewrite/valid_edge mkedgeE [(left_pt _).1]/= [(right_pt _).1]/= bzx.
+  by rewrite ?ltW //; move: vint=> /andP[].
+rewrite det_conv -sgz_le0.
+have Cuin : 0 < 1 - u < 1 by rewrite in_itv /= in uin; lra.
+set X := (X in X <= 0).
+suff : X = -1.
+  (* TODO : report
+  Fail Timeout 2 lra. *)
+  by move=> ->; apply: lerN10.
+rewrite {}/X.
+apply: conv_num_sg=> //.
+  apply: ltr0_sgz.
+  rewrite bezier_step_conv det_conv.
+  rewrite convC.
+  apply: conv_num_ltr=> //.
+    rewrite /=; move: abc; rewrite /ccw mkedgeE /= => abc.
+    by rewrite det_inverse oppr_lte0 -det_cyclique.
+  by rewrite /= mkedgeE /= -det_cyclique det_alternate.
+apply: ltr0_sgz.
+rewrite bezier_step_conv det_conv.
+apply: conv_num_ltr=> //.
+  rewrite /=; move: abc; rewrite /ccw mkedgeE /= => abc.
+  by rewrite det_inverse oppr_lte0 -det_cyclique.
+by rewrite mkedgeE /= det_alternate.
+Qed.
