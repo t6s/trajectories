@@ -130,6 +130,7 @@ is found as soon as one exists
 \end{frame}
 \begin{frame}
 \frametitle{broken line safe path between points}
+\label{broken-line}
 \includegraphics[trim={0 0 0 10cm}, clip, width=\textwidth]{spiral_bline.pdf}
 \end{frame}
 \begin{frame}
@@ -229,24 +230,27 @@ the initial starting and end points, and the solid green straight edge tip
 \end{frame}
 \begin{frame}
 \frametitle{Final trajectories}
+\label{final-spiral-with-br}
 \includegraphics[trim={0 0 0 10cm}, clip, width=\textwidth]{smooth_spiral.pdf}
 \end{frame}
 \begin{frame}
 \frametitle{Final trajectories}
+\label{final-spiral}
 \includegraphics[trim={0 0 0 10cm}, clip, width=\textwidth]{smooth_spiral2.pdf}
 \end{frame}
 \begin{frame}
 \frametitle{Final trajectories: repaired curve example}
+\label{final-polygon}
 \includegraphics[trim={0 0 0 10cm}, clip, width=\textwidth]{polygon.pdf}
 \end{frame}
 \begin{frame}
 \frametitle{Proof tools}
 \begin{itemize}
-\item Breadth first search
+\item Breadth first search (recent development)
 \item Convex hulls (Pichardie \& B. 2001)
 \begin{itemize}
 \item Orientation predicate
-\item Collision between two segments
+\item Collision between two segments (recent development)
 \end{itemize}
 \item Convex spaces and Bezier Curve
 \begin{itemize}
@@ -260,6 +264,12 @@ the initial starting and end points, and the solid green straight edge tip
 \begin{frame}
 \frametitle{Key proof features}
 \begin{itemize}
+\item Replaced absence collision by guarantees to travel inside a safe
+  subset
+\begin{itemize}
+\item interior of cells (2-dimensional subsets)
+\item interior of doors (1-dimensional subsets)
+\end{itemize}
 \item Safe paths from cell centers to all doors to other cells
 \item Safe path from any door on the left side to a door on the right
 side of a cell
@@ -269,7 +279,6 @@ side of a cell
 \item Bezier curves that cross doors are monotonic in the first coordinate
 \begin{itemize}
 \item It is enough to prove that the door is passed correctly
-\item Formal proof not yet done
 \end{itemize}
 \item work in progress
 \end{itemize}
@@ -280,17 +289,49 @@ side of a cell
 \item In the algorithm, dichotomy at midpoints
 \begin{itemize}
 \item Obtain triangles that hug the curve close enough
+\item Obtain guarantee that any intersection with the vertical line
+      is within the door
+\item Does not obtain unicity
 \end{itemize}
 \item In the proof, dichotomy at the exact value
 \begin{itemize}
-\item Makes it easy to prove that the door is crossed only once
+\item Proves that the door is passed only once
 \end{itemize}
 \end{itemize}
 \end{frame}
 \begin{frame}
-\frametitle{Use of convexity}
+\frametitle{Cell properties}
 \begin{itemize}
-\item 
+\item Two edges for the low and high side
+\begin{itemize}
+\item These edges do not cross
+\end{itemize}
+\item Two sequences of points for the left and right side
+\begin{itemize}
+\item Non-empty
+\item Vertically aligned points,
+\item Sorted with respect to their second coordinates
+\item First and last point must be on low and high edges
+\end{itemize}
+\item Left and right side must be at distinct first coordinate
+\end{itemize}
+\end{frame}
+\begin{frame}
+\frametitle{Further work}
+\begin{itemize}
+\item This is proof-of-concept, not satisfactory for practical use
+\begin{itemize}
+\item Path from middle of door to middle of door is too naive
+\item Bezier Curve do not guarantee pleasant dynamics
+\end{itemize}
+\item Should consider Clothoids
+\item Should improve Coq to facilitate plotting parameterized curves
+\begin{itemize}
+\item Current approach by generating postcript programs from algorithm data
+\item Rely on Postscript's Bezier curves (slides \pageref{broken-line}, 
+\pageref{final-spiral-with-br}, \pageref{final-spiral},
+\pageref{final-polygon})
+\end{itemize}
 \end{itemize}
 \end{frame}
 \end{document}
