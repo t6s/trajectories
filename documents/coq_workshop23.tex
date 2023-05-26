@@ -1,0 +1,44 @@
+\documentclass{easychair}
+
+\usepackage{fullpage}
+
+\begin{document}
+\section{Introduction}
+The goal of this presentation is to present a comprehensive Coq program
+to compute trajectories for an object that has the size of a point between
+obstacles that are given by straight line segments.  The Coq program
+contains four phases:
+\begin{enumerate}
+\item The obstacles are sorted in a sequence of {\em events}
+\item The working space is decomposed into cells that are guaranteed to not contain
+ any obstacle,  through a process that consumes the events respecting the order
+\item Given a source and a target point, astraight line trajectory is generated,
+when possible, thanks to a breadth-first search algorithm
+\item The angles of the straight line trajectory are then rounded using Bezier curves
+\end{enumerate}
+In its current form, the algorithme works under the following pre-condition:
+\begin{itemize}
+\item There are two segments {\tt top} and {\tt bottom}, which define a box containing
+all the obstacles, with no contacts between the obstacles and these segments
+\item The only intersections between segments are at their extremities
+\item None of the obstacles is vertical (in other words, all segments link two points
+where the first coordinate of one point is less than the first coordinate of the other)
+\end{itemize}
+
+The algorithm receives as inputs the top and bottom edges, the sequence of segments,
+and two points describing the source and target of the expected trajectory.
+
+The result is either a sequence of trajectory elements or an exceptional value, called
+{\tt None} , based
+on the well-known {\tt option} datatype.  When the result is not {\tt None},
+the following properties are guaranteed:
+\begin{itemize}
+\item Each of the trajectory elements is either a segment or Bezier curve,
+\item The sequence of trajectory elements form a continuous path,
+\item None of the trajectory elements has an intersection with either
+the {\tt top} and {\tt bottom} edges or the obstracles.
+\end{itemize}
+This is work in progress, so that not all of these properties have been proved yet.
+We shall provide animations of the various phases of this program.
+
+\end{document}
