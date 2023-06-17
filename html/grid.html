@@ -1,0 +1,43 @@
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>Grid</title>
+    <style>
+      body {
+              overflow: hidden;
+              margin: 0px;
+           }
+    </style>
+    <script async
+      src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js">
+    </script>
+
+    <script type="importmap">
+      {
+        "imports": {
+        "three": "https://unpkg.com/three@0.150.1/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.150.1/examples/jsm/"
+        }
+      }
+    </script>
+	</head>
+  <body>
+<input type="radio" id="borders" name="modality" value="borders" checked="checked">
+<label for="Border">Borders</label>
+<input type="radio" id="obstacles" name="modality" value="obstacles">
+<label for="Maze">Obstacles</label>
+<input type="radio" id="positions" name="modality" value="positions">
+<label for="Position">Starting and ending positions</label> 
+<p>
+  To add a line (border or obstacle) click to a first end-point (blue square)
+  then click to the second end-point
+<p>
+  To remove a line (border or obstacle) click to a first end-point (blue square)
+  then click to the second end-point
+<p>
+  After giving the starting point and the ending point (positions) the system 
+  gives the list of borders, obstacles and positions.
+</p>
+  <script defer type="module" src="./grid.js"></script>
+  </body>
+</html>
