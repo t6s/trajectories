@@ -1,0 +1,41 @@
+post-all::
+	$(MAKE) -f $(SELF) Add.mli
+clean::
+	rm -f Add.mli
+Add.mli : add.vo
+	echo "mli"
+
+post-all::
+		$(MAKE) -f $(SELF) Add.ml
+clean::
+		rm -f Add.ml
+Add.ml : add.vo
+		echo "ml"
+
+post-all::
+	$(MAKE) -f $(SELF) Add.cmi
+clean::
+	rm -f Add.cmi Add.cmo jAdd.cmi jAdd.cmo
+Add.cmi : Add.mli
+	ocamlfind ocamlc Add.mli
+
+post-all::
+	$(MAKE) -f $(SELF) jAdd.cmi
+clean::
+	rm -f jAdd.cmi
+jAdd.cmi :  jAdd.ml
+	ocamlfind ocamlc jAdd.mli
+
+post-all::
+	$(MAKE) -f $(SELF) Add.bytes
+clean::
+	rm -f Add.bytes
+Add.bytes :  jAdd.cmi jAdd.ml Add.ml Add.cmi
+	ocamlfind ocamlc -package js_of_ocaml -package js_of_ocaml-ppx -linkpkg -o Add.bytes Add.ml jAdd.ml
+
+post-all::
+	$(MAKE) -f $(SELF) Add.js
+clean::
+	rm -f Add.js
+Add.js :  Add.bytes
+	js_of_ocaml Add.bytes
