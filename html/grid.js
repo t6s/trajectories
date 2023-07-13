@@ -69,6 +69,8 @@ renderer.render( scene, camera );
 
 // set of borders on the screen
 var  borders = [];
+const cmaterial = new THREE.LineBasicMaterial( { color: 'brown' } );
+var curves = [];
 
 function addBorder(fX, fZ, tX, tZ) {
     if (tX < fX) {
@@ -209,6 +211,7 @@ function onDocumentMouseDown( event ) {
         toValid = false;
         fromCube.position.y = -0.2;
         toCube.position.y = -0.2;
+        cleanCurves();
         renderer.render( scene, camera );  
     }
     if (fromValid) {
@@ -227,6 +230,7 @@ function onDocumentMouseDown( event ) {
                 renderer.render( scene, camera ); 
                 return;
             }
+            cleanCurves();
             addBorder(fromX, fromZ, toX, toZ);
         }
         if (modality == "obstacles") {
@@ -238,6 +242,7 @@ function onDocumentMouseDown( event ) {
                 renderer.render( scene, camera ); 
                 return;
             }
+            cleanCurves();
             addObstacle(fromX, fromZ, toX, toZ);
         }
         if (modality == "positions") {
@@ -248,7 +253,8 @@ function onDocumentMouseDown( event ) {
             toCube.position.x = toX;
             renderer.render( scene, camera );
             positions = {fX : fromX, fZ : fromZ, tX : toX, tZ : toZ }
-            printState();
+            cleanCurves();
+            outState();
         }
     } else {
         fromValid = true;         
@@ -258,6 +264,7 @@ function onDocumentMouseDown( event ) {
         fromCube.position.y = fromY;
         fromCube.position.x = fromX;
         toCube.position.y = -0.2;
+        cleanCurves();
         renderer.render( scene, camera );
     }
 }
@@ -274,6 +281,7 @@ for (const radioButton of radioButtons) {
 var modality = "";
 
 function setModality() {
+    cleanCurves();
     fromValid = false;  
     toValid = false;         
     fromCube.position.y = -0.2;
@@ -289,6 +297,7 @@ function setModality() {
 }
  
 setModality();
+
 function printVal (v) {
     let v1 = v + 0.5 + (gSize/2);
     let val = "";
@@ -315,4 +324,99 @@ function printState() {
   val += "Start (" + printVal(positions.fX) + ", " + printVal(positions.fZ) + ") To (" + 
             printVal(positions.tX) + ", " + printVal(positions.tZ) + ")\n";
   setTimeout(() => {  alert(val); }, 1000);  
+}
+
+function outVal (v) {
+    let v1 = v + 0.5 + (gSize/2);
+    let val = "+" + v1 + " " + "+" + gSize + " "
+    return val;
+}
+
+console.log(curves.length);
+
+function cleanCurves () {
+    let i = 0; 
+    console.log("curves " + curves);
+    while (i < curves.length)
+    for (const curve of curves) {
+        scene.remove(curves[i]);
+        i++;
+    }
+    renderer.render( scene, camera ); 
+    curves = [];
+}
+
+function outState() {
+  let val = "";
+  val += outVal(positions.fX) + outVal(positions.fZ) + 
+         outVal(positions.tX) + outVal(positions.tZ);
+  if (borders.length != 2) {
+    return;
+  }
+  if (borders[0].fZ <= borders[1].fZ) {
+    val += outVal(borders[0].fX) + outVal(borders[0].fZ) + 
+           outVal(borders[0].tX) + outVal(borders[0].tZ);  
+    val += outVal(borders[1].fX) + outVal(borders[1].fZ) + 
+           outVal(borders[1].tX) + outVal(borders[1].tZ);  
+  } else {
+    val += outVal(borders[1].fX) + outVal(borders[1].fZ) + 
+           outVal(borders[1].tX) + outVal(borders[1].tZ);  
+    val += outVal(borders[0].fX) + outVal(borders[0].fZ) + 
+           outVal(borders[0].tX) + outVal(borders[0].tZ);  
+  }
+  for (const obstacle of obstacles) {
+    val += outVal(obstacle.fX) + outVal(obstacle.fZ)
+            + outVal(obstacle.tX) + outVal(obstacle.tZ);  
+  } 
+  console.log(val);
+  let res = smooth(val);
+  let res1 = res.split(' ').map(Number);
+  let i = 0;
+  while (i < res1.length) {
+    if (res1[i] == 1) {
+        /* Straight line */
+        let fx = res1[i + 2] / res1 [i + 3] * gSize - 0.5 - gSize/2;
+        let fy = 0.3;
+        let fz = res1[i + 4] / res1 [i + 5] * gSize - 0.5 - gSize/2;
+        let tx = res1[i + 6] / res1 [i + 7] * gSize - 0.5 - gSize/2;
+        let ty = 0.3;
+        let tz = res1[i + 8] / res1 [i + 9] * gSize - 0.5 - gSize/2;
+        console.log("Adding a line" + fx + " " + fz + " " + tx + " " + tz);
+        let epoints = [];
+        epoints.push( new THREE.Vector3(fx, fy, fz) );
+        epoints.push( new THREE.Vector3(tx, ty, tz));
+        let egeometry = new THREE.BufferGeometry().setFromPoints( epoints );
+        let sline = new THREE.Line( egeometry, cmaterial );
+        curves.push(sline);
+        scene.add( sline );
+        renderer.render( scene, camera );
+        i += 10;
+    } else if (res1[i] == 2) {
+        /* curve */
+        let fx = res1[i + 2] / res1 [i + 3] * gSize - 0.5 - gSize/2;
+        let fy = 0.3;
+        let fz = res1[i + 4] / res1 [i + 5] * gSize - 0.5 - gSize/2;
+        let cx = res1[i + 6] / res1 [i + 7] * gSize - 0.5 - gSize/2;
+        let cy = 0.3;
+        let cz = res1[i + 8] / res1 [i + 9] * gSize - 0.5 - gSize/2;
+        let tx = res1[i + 10] / res1 [i + 11] * gSize - 0.5 - gSize/2;
+        let ty = 0.3;
+        let tz = res1[i + 12] / res1 [i + 13] * gSize - 0.5 - gSize/2;
+        console.log("Adding a curve" + fx + " " + fz + " " 
+                                     + cx + " " + cz + " " + tx + " " + tz);
+        let ccurve = new THREE.QuadraticBezierCurve3(
+                	new THREE.Vector3(fx, fy, fz ),
+	                new THREE.Vector3(cx, cy, cz ),
+	                new THREE.Vector3(tx, ty, tz )
+                );
+        let cpoints = ccurve.getPoints( 50 );
+        let cgeometry = new THREE.BufferGeometry().setFromPoints( cpoints );
+        let cline = new THREE.Line( cgeometry, cmaterial );
+        scene.add( cline );
+        curves.push(cline);
+        i += 14;
+    } else {
+        i++;
+    }
+  }
 }
