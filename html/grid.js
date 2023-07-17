@@ -1,14 +1,14 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-const gSize  = 20;
+const gSize  = 40;
 
 const renderer = new THREE.WebGLRenderer();
-renderer.setSize(gSize * 25 ,  gSize * 25 );
+renderer.setSize(600, 600);
 document.body.insertBefore(renderer.domElement, document.body.firstChild);
 
 const camera = new THREE.PerspectiveCamera( 45, 1, 1, 500 );
-camera.position.set(0, 2 * gSize, 0);
+camera.position.set(0, 1.5 * gSize, 0);
 camera.lookAt( 0, 0, 0 );
 
 
@@ -368,8 +368,10 @@ function outState() {
     val += outVal(obstacle.fX) + outVal(obstacle.fZ)
             + outVal(obstacle.tX) + outVal(obstacle.tZ);  
   } 
-  console.log(val);
+  console.log("boarders " + borders.length + " obstacles " + obstacles.length);
+  console.log("val " + val);
   let res = smooth(val);
+  console.log("res " + res);
   let res1 = res.split(' ').map(Number);
   let i = 0;
   while (i < res1.length) {
