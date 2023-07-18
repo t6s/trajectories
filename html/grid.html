@@ -22,21 +22,19 @@
     </script>
 	</head>
   <body>
-<input type="radio" id="borders" name="modality" value="borders" checked="checked">
-<label for="Border">Borders</label>
-<input type="radio" id="obstacles" name="modality" value="obstacles">
+<input type="radio" id="obstacles" name="modality" value="obstacles" checked="checked">
 <label for="Maze">Obstacles</label>
 <input type="radio" id="positions" name="modality" value="positions">
 <label for="Position">Starting and ending positions</label> 
 <p>
-  To add a line (border or obstacle) click to a first end-point (blue square)
+  To add an obstacle, click to a first end-point (blue square)
   then click to the second end-point
 <p>
-  To remove a line (border or obstacle) click to a first end-point (blue square)
+  To remove an obstacle, click to a first end-point (blue square)
   then click to the second end-point
 <p>
   After giving the starting point and the ending point (positions) the system 
-  gives the list of borders, obstacles and positions.
+  gives a path avoiding the obstacles.
 </p>
   <script defer type="module" src="./SmoothTrajectories.js"></script>
   <script defer type="module" src="./grid.js"></script>

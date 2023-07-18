@@ -67,64 +67,14 @@ toCube.position.x = toX;
 scene.add(toCube);
 renderer.render( scene, camera );
 
-// set of borders on the screen
+// set of default borders
 var  borders = [];
+borders.push({fX : - gSize/2, fZ : - gSize/2, tX : gSize/2, tZ : - gSize/2});
+borders.push({fX : - gSize/2, fZ :   gSize/2, tX : gSize/2, tZ :   gSize/2});
+
 const cmaterial = new THREE.LineBasicMaterial( { color: 'brown' } );
 var curves = [];
 
-function addBorder(fX, fZ, tX, tZ) {
-    if (tX < fX) {
-        let xX = fX;
-        let xZ = fZ;
-        fX = tX;
-        fZ = tZ;
-        tX = xX;
-        tZ = xZ;
-    }
-    console.log("addBorder " + fX + " " + fZ + " " + tX + " " + tZ);
-    fromValid = false;  
-    toValid = false;   
-    fromCube.position.y = -0.2;
-    toCube.position.y = -0.2;
-    let test = false;
-    let index = 0;
-    let tline = null;
-    borders.every(item => {
-            if ((fX == item.fX) && (fZ == item.fZ) &&
-                (tX == item.tX) && (tZ == item.tZ)) {
-                test = true;
-                tline = item.line;
-                return false;
-            };
-            index++;
-            return true;
-    });
-    if (test) {
-        console.log("delete");
-        scene.remove(tline);
-        borders.splice(index, 1);
-        renderer.render( scene, camera ); 
-        return;
-    }
-    if (borders.length > 1) {
-        console.log("full");
-        fromValid = false;  
-        toValid = false;   
-        fromCube.position.y = -0.2;
-        toCube.position.y = -0.2;
-        renderer.render( scene, camera ); 
-        return;
-    }
-    let fromVector = new THREE.Vector3(fX, fY, fZ ) ;
-    let toVector = new THREE.Vector3(tX, tY, tZ ) ;
-    let points = [fromVector, toVector];
-    let geometry = new THREE.BufferGeometry().setFromPoints( points );
-    let vline = new THREE.Line( geometry, borderMat );
-    scene.add( vline );
-    const v = {fX : fX, fZ : fZ, tX : tX, tZ : tZ, line : vline };
-    borders.push(v);
-    renderer.render( scene, camera ); 
-}
 
 // set of obstacles on the screen
 var  obstacles = [];
@@ -217,22 +167,10 @@ function onDocumentMouseDown( event ) {
     if (fromValid) {
         toZ = Math.round(gSize + posZ + 0.5) -gSize - 0.5;
         toX = Math.round(gSize + posX + 0.5) -gSize - 0.5;
-        if ((fromX == toX) && (fromZ != toZ)) {
+        if ((fromX == toX) && (fromZ != toZ) && (modality == "obstacles")) {
             return;
         }
         console.log("modality = " + modality);
-        if (modality == "borders") {
-            fromValid = false;  
-            toValid = true;         
-            if ((fromX == toX) && (fromZ == toZ)) {
-                fromCube.position.y = -0.2;
-                toCube.position.y = -0.2;
-                renderer.render( scene, camera ); 
-                return;
-            }
-            cleanCurves();
-            addBorder(fromX, fromZ, toX, toZ);
-        }
         if (modality == "obstacles") {
             fromValid = false;  
             toValid = true;         
@@ -328,7 +266,7 @@ function printState() {
 
 function outVal (v) {
     let v1 = v + 0.5 + (gSize/2);
-    let val = "+" + v1 + " " + "+" + gSize + " "
+    let val = "+" + (2 * v1) + " " + "+" + (2 * gSize) + " "
     return val;
 }
 
