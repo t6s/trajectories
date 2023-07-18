@@ -41,7 +41,7 @@ var fromZ = 0;
 const fromColor = new THREE.Color('blue');
 const fromMat   = new THREE.MeshBasicMaterial({color: fromColor});
 // create the from Square
-const fromGeometry = new THREE.BoxGeometry(0.4, 0.1, 0.4);
+const fromGeometry = new THREE.BoxGeometry(0.9, 0.1, 0.9);
 const fromCube = new THREE.Mesh(fromGeometry, fromMat);
 // The initial position
 fromCube.position.z = fromZ;
@@ -58,7 +58,7 @@ var toZ = 0;
 var toColor = new THREE.Color('red');
 const toMat   = new THREE.MeshBasicMaterial({color: toColor});
 // create the to Square
-const toGeometry = new THREE.BoxGeometry(0.4, 0.1, 0.4);
+const toGeometry = new THREE.BoxGeometry(0.9, 0.1, 0.9);
 const toCube = new THREE.Mesh(toGeometry, toMat);
 // The initial position
 toCube.position.z = toZ;
