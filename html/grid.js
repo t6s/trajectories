@@ -16,7 +16,7 @@ let scene = new THREE.Scene();
 scene.background = new THREE.Color( 'lightgrey' );
 
 let grid = new THREE.GridHelper(gSize, gSize);
-/* scene.add(grid); */
+scene.add(grid);
 grid.position.z = 0;
 grid.position.y = 0.1;
 grid.position.x = 0;
@@ -261,6 +261,12 @@ var cellFlag = true;
 function setCell() {
     cleanCells();
     cellFlag = cellButtons[0].checked;
+    if (cellFlag) {
+      scene.remove(grid)
+    } else {
+      scene.add(grid);
+    }
+    renderer.render( scene, camera );
     getCells();
 }
 
