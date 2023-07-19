@@ -55,4 +55,4 @@ Add.js :  Add.bytes
 	js_of_ocaml Add.bytes
 
 SmoothTrajectories.js :  SmoothTrajectories.bytes
-	js_of_ocaml SmoothTrajectories.bytes
+	js_of_ocaml --opt=3 SmoothTrajectories.bytes

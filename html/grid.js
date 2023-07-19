@@ -16,7 +16,7 @@ let scene = new THREE.Scene();
 scene.background = new THREE.Color( 'lightgrey' );
 
 let grid = new THREE.GridHelper(gSize, gSize);
-scene.add(grid);
+/* scene.add(grid); */
 grid.position.z = 0;
 grid.position.y = 0.1;
 grid.position.x = 0;
@@ -25,7 +25,7 @@ renderer.render( scene, camera );
 var mouse = new THREE.Vector2();
 var raycaster = new THREE.Raycaster();
 
-const boardColor = new THREE.Color('lightpink');
+const boardColor = new THREE.Color('white');
 const boardMat   = new THREE.MeshBasicMaterial({color: boardColor});
 const boardGeometry = new THREE.BoxGeometry(gSize,0.1, gSize);
 const boardCube = new THREE.Mesh(boardGeometry, boardMat);
@@ -74,6 +74,7 @@ borders.push({fX : - gSize/2, fZ :   gSize/2, tX : gSize/2, tZ :   gSize/2});
 
 const cmaterial = new THREE.LineBasicMaterial( { color: 'brown' } );
 var curves = [];
+var cells = [];
 
 
 // set of obstacles on the screen
@@ -111,6 +112,8 @@ function addObstacle(fX, fZ, tX, tZ) {
         scene.remove(tline);
         obstacles.splice(index, 1);
         renderer.render( scene, camera ); 
+        cleanCells();
+        getCells();
         return;
     }
     let fromVector = new THREE.Vector3(fX, fY, fZ ) ;
@@ -123,7 +126,9 @@ function addObstacle(fX, fZ, tX, tZ) {
     scene.add( vline );
     const v = {fX : fX, fZ : fZ, tX : tX, tZ : tZ, line : vline };
     obstacles.push(v);
-    renderer.render( scene, camera ); 
+    renderer.render( scene, camera );
+    cleanCells();
+    getCells();     
 }
 
 var positions;
@@ -153,7 +158,7 @@ function onDocumentMouseDown( event ) {
     let posZ = intersects[0].point.z;
     let dZ = Math.abs(Math.trunc(posZ) - posZ);
     let dX = Math.abs(Math.trunc(posX) - posX);
-    if (((dZ < 0.1) || (0.9 < dZ)) || (dX < 0.1) || (0.9 < dX)) {
+    if (((dZ < 0.05) || (0.95 < dZ)) || (dX < 0.05) || (0.95 < dX)) {
         return;
     }
     if (toValid && (modality == "positions")) {
@@ -192,7 +197,7 @@ function onDocumentMouseDown( event ) {
             renderer.render( scene, camera );
             positions = {fX : fromX, fZ : fromZ, tX : toX, tZ : toZ }
             cleanCurves();
-            outState();
+            getCurve();
         }
     } else {
         fromValid = true;         
@@ -284,7 +289,25 @@ function cleanCurves () {
     curves = [];
 }
 
-function outState() {
+function cleanCells () {
+    let i = 0; 
+    console.log("cells " + cells);
+    while (i < cells.length)
+    for (const cell of cells) {
+        scene.remove(cells[i]);
+        i++;
+    }
+    renderer.render( scene, camera ); 
+    cells = [];
+}
+
+const dmaterial = new THREE.LineDashedMaterial( {
+	color: 'black',
+	dashSize: 0.4,
+	gapSize: 0.4,
+} );
+
+function getCurve() {
   let val = "";
   val += outVal(positions.fX) + outVal(positions.fZ) + 
          outVal(positions.tX) + outVal(positions.tZ);
@@ -308,7 +331,7 @@ function outState() {
   } 
   console.log("boarders " + borders.length + " obstacles " + obstacles.length);
   console.log("val " + val);
-  let res = smooth(val);
+  let res = ocamlLib.smooth(val);
   console.log("res " + res);
   let res1 = res.split(' ').map(Number);
   let i = 0;
@@ -358,5 +381,56 @@ function outState() {
     } else {
         i++;
     }
+  }
+}
+
+function getCells() {
+  let val = "";
+  if (borders.length != 2) {
+    return;
+  }
+  if (borders[0].fZ <= borders[1].fZ) {
+    val += outVal(borders[0].fX) + outVal(borders[0].fZ) + 
+           outVal(borders[0].tX) + outVal(borders[0].tZ);  
+    val += outVal(borders[1].fX) + outVal(borders[1].fZ) + 
+           outVal(borders[1].tX) + outVal(borders[1].tZ);  
+  } else {
+    val += outVal(borders[1].fX) + outVal(borders[1].fZ) + 
+           outVal(borders[1].tX) + outVal(borders[1].tZ);  
+    val += outVal(borders[0].fX) + outVal(borders[0].fZ) + 
+           outVal(borders[0].tX) + outVal(borders[0].tZ);  
+  }
+  for (const obstacle of obstacles) {
+    val += outVal(obstacle.fX) + outVal(obstacle.fZ)
+            + outVal(obstacle.tX) + outVal(obstacle.tZ);  
+  } 
+  console.log("boarders " + borders.length + " obstacles " + obstacles.length);
+  console.log("val " + val);
+  let res = ocamlLib.cells(val);
+  console.log("res " + res);
+  let res1 = res.split(' ').map(Number);
+  console.log("res1 length" + res1.length);
+  console.log("res1[0]=" + res1[0]);
+  console.log("res1[res1.length - 1]=" + res1[res1.length - 1]);
+  let i = 0;
+  while (i < res1.length - 1) {
+    /* Straight line */
+    let fx = res1[i] / res1 [i + 1] * gSize - 0.5 - gSize/2;
+    let fy = 0.3;
+    let fz = res1[i + 2] / res1 [i + 3] * gSize - 0.5 - gSize/2;
+    let tx = res1[i + 4] / res1 [i + 5] * gSize - 0.5 - gSize/2;
+    let ty = 0.3;
+    let tz = res1[i + 6] / res1 [i + 7] * gSize - 0.5 - gSize/2;
+    console.log("Adding a dotted line" + fx + " " + fz + " " + tx + " " + tz);
+    let epoints = [];
+     epoints.push( new THREE.Vector3(fx, fy, fz) );
+     epoints.push( new THREE.Vector3(tx, ty, tz));
+    let egeometry = new THREE.BufferGeometry().setFromPoints( epoints );
+    let sline = new THREE.Line( egeometry, dmaterial );
+    sline.computeLineDistances();
+    cells.push(sline);
+    scene.add( sline );
+    renderer.render( scene, camera );
+    i += 8;
   }
 }
