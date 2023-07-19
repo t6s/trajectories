@@ -67,6 +67,13 @@ toCube.position.x = toX;
 scene.add(toCube);
 renderer.render( scene, camera );
 
+/* meterial for dotted line */
+const dmaterial = new THREE.LineDashedMaterial( {
+	color: 'black',
+	dashSize: 0.4,
+	gapSize: 0.4,
+} );
+
 // set of default borders
 var  borders = [];
 borders.push({fX : - gSize/2, fZ : - gSize/2, tX : gSize/2, tZ : - gSize/2});
@@ -158,9 +165,10 @@ function onDocumentMouseDown( event ) {
     let posZ = intersects[0].point.z;
     let dZ = Math.abs(Math.trunc(posZ) - posZ);
     let dX = Math.abs(Math.trunc(posX) - posX);
-    if (((dZ < 0.05) || (0.95 < dZ)) || (dX < 0.05) || (0.95 < dX)) {
+/*    if (((dZ < 0.05) || (0.95 < dZ)) || (dX < 0.05) || (0.95 < dX)) {
         return;
     }
+*/
     if (toValid && (modality == "positions")) {
         fromValid = false;
         toValid = false;
@@ -241,6 +249,23 @@ function setModality() {
  
 setModality();
 
+const cellButtons = 
+  document.querySelectorAll('input[name="Show Cell"]');
+
+for (const cellButton of cellButtons) {
+    cellButton.addEventListener("click", setCell, false);
+}
+
+var cellFlag = true;
+
+function setCell() {
+    cleanCells();
+    cellFlag = cellButtons[0].checked;
+    getCells();
+}
+
+setCell();
+ 
 function printVal (v) {
     let v1 = v + 0.5 + (gSize/2);
     let val = "";
@@ -300,12 +325,6 @@ function cleanCells () {
     renderer.render( scene, camera ); 
     cells = [];
 }
-
-const dmaterial = new THREE.LineDashedMaterial( {
-	color: 'black',
-	dashSize: 0.4,
-	gapSize: 0.4,
-} );
 
 function getCurve() {
   let val = "";
@@ -385,6 +404,9 @@ function getCurve() {
 }
 
 function getCells() {
+  if (!cellFlag) {
+    return;
+  }
   let val = "";
   if (borders.length != 2) {
     return;
