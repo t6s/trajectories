@@ -1,30 +1,31 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
+/* Size of the grid */
 const gSize  = 40;
 
+/* The render */
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(600, 600);
 document.body.insertBefore(renderer.domElement, document.body.firstChild);
 
+/* The camera */
 const camera = new THREE.PerspectiveCamera( 45, 1, 1, 500 );
 camera.position.set(0, 1.5 * gSize, 0);
 camera.lookAt( 0, 0, 0 );
 
-
-let scene = new THREE.Scene();
+/* The scene */
+var scene = new THREE.Scene();
 scene.background = new THREE.Color( 'lightgrey' );
 
-let grid = new THREE.GridHelper(gSize, gSize);
+/* The grid */
+var grid = new THREE.GridHelper(gSize, gSize);
 scene.add(grid);
 grid.position.z = 0;
 grid.position.y = 0.1;
 grid.position.x = 0;
-
 renderer.render( scene, camera );
-var mouse = new THREE.Vector2();
-var raycaster = new THREE.Raycaster();
 
+/* The board */
 const boardColor = new THREE.Color('white');
 const boardMat   = new THREE.MeshBasicMaterial({color: boardColor});
 const boardGeometry = new THREE.BoxGeometry(gSize,0.1, gSize);
@@ -34,6 +35,7 @@ boardCube.position.y = 0;
 boardCube.position.x = 0;
 scene.add(boardCube);
 
+/* The From Square */
 var fromValid = false;
 var fromX = 0;
 var fromY = 0.2;
@@ -49,6 +51,7 @@ fromCube.position.y = -0.2;
 fromCube.position.x = fromX;
 scene.add(fromCube);
 
+/* The To Square */
 var toValid = false;
 var fY = 0.2;
 var tY = 0.2;
@@ -67,25 +70,15 @@ toCube.position.x = toX;
 scene.add(toCube);
 renderer.render( scene, camera );
 
-/* meterial for dotted line */
-const dmaterial = new THREE.LineDashedMaterial( {
-	color: 'black',
-	dashSize: 0.4,
-	gapSize: 0.4,
-} );
-
-// set of default borders
+// The Borders 
 var  borders = [];
 borders.push({fX : - gSize/2, fZ : - gSize/2, tX : gSize/2, tZ : - gSize/2});
 borders.push({fX : - gSize/2, fZ :   gSize/2, tX : gSize/2, tZ :   gSize/2});
 
-const cmaterial = new THREE.LineBasicMaterial( { color: 'brown' } );
-var curves = [];
-var cells = [];
-
-
-// set of obstacles on the screen
+// The obstacles 
 var  obstacles = [];
+const lineColor = new THREE.Color( 'green' );
+const lineMat = new THREE.LineBasicMaterial({color: lineColor, linewidth: 1});
 
 function addObstacle(fX, fZ, tX, tZ) {
     if (tX < fX) {
@@ -138,186 +131,85 @@ function addObstacle(fX, fZ, tX, tZ) {
     getCells();     
 }
 
-var positions;
-const lineColor = new THREE.Color( 'green' );
-const lineMat = new THREE.LineBasicMaterial({color: lineColor, linewidth: 1});
 
-const borderColor = new THREE.Color( 'black' );
-const borderMat = new THREE.LineBasicMaterial({color: borderColor, linewidth: 1});
+/* The cells */
+var cells = [];
+var cellsFlag = true;
 
-function onDocumentMouseDown( event ) {
+const cellsButtons = 
+  document.querySelectorAll('input[name="Show Cells"]');
 
-    // Get screen-space x/y
-    mouse.x = ( event.clientX / renderer.domElement.clientWidth ) * 2 - 1;
-    mouse.y = - ( event.clientY / renderer.domElement.clientHeight ) * 2 + 1;
-
-    // Perform raycast
-    raycaster.setFromCamera( mouse, camera );
-
-    // See if the ray from the camera into the world hits our mesh
-    const intersects = raycaster.intersectObject( boardCube );
-
-    // Check if an intersection took place
-    if ( intersects.length == 0 ) {
-        return;
-    }
-    let posX = intersects[0].point.x;
-    let posZ = intersects[0].point.z;
-    let dZ = Math.abs(Math.trunc(posZ) - posZ);
-    let dX = Math.abs(Math.trunc(posX) - posX);
-/*    if (((dZ < 0.05) || (0.95 < dZ)) || (dX < 0.05) || (0.95 < dX)) {
-        return;
-    }
-*/
-    if (toValid && (modality == "positions")) {
-        fromValid = false;
-        toValid = false;
-        fromCube.position.y = -0.2;
-        toCube.position.y = -0.2;
-        cleanCurves();
-        renderer.render( scene, camera );  
-    }
-    if (fromValid) {
-        toZ = Math.round(gSize + posZ + 0.5) -gSize - 0.5;
-        toX = Math.round(gSize + posX + 0.5) -gSize - 0.5;
-        if ((fromX == toX) && (fromZ != toZ) && (modality == "obstacles")) {
-            return;
-        }
-        console.log("modality = " + modality);
-        if (modality == "obstacles") {
-            fromValid = false;  
-            toValid = true;         
-            if ((fromX == toX) && (fromZ == toZ)) {
-                fromCube.position.y = -0.2;
-                toCube.position.y = -0.2;
-                renderer.render( scene, camera ); 
-                return;
-            }
-            cleanCurves();
-            addObstacle(fromX, fromZ, toX, toZ);
-        }
-        if (modality == "positions") {
-            fromValid = true;         
-            toValid = true;         
-            toCube.position.z = toZ;
-            toCube.position.y = toY;
-            toCube.position.x = toX;
-            renderer.render( scene, camera );
-            positions = {fX : fromX, fZ : fromZ, tX : toX, tZ : toZ }
-            cleanCurves();
-            getCurve();
-        }
-    } else {
-        fromValid = true;         
-        fromZ = Math.round(gSize + posZ + 0.5) -gSize - 0.5;
-        fromX = Math.round(gSize + posX + 0.5) -gSize - 0.5;
-        fromCube.position.z = fromZ;
-        fromCube.position.y = fromY;
-        fromCube.position.x = fromX;
-        toCube.position.y = -0.2;
-        cleanCurves();
-        renderer.render( scene, camera );
-    }
+for (const cellsButton of cellsButtons) {
+    cellsButton.addEventListener("click", setCells, false);
 }
 
-renderer.domElement.addEventListener('click', onDocumentMouseDown, false);
 
-const radioButtons = 
-  document.querySelectorAll('input[name="modality"]');
+const dmaterial = new THREE.LineDashedMaterial( {
+	color: 'black',
+	dashSize: 0.4,
+	gapSize: 0.4,
+} );
 
-for (const radioButton of radioButtons) {
-    radioButton.addEventListener("click", setModality, false);
-}
 
-var modality = "";
-
-function setModality() {
-    cleanCurves();
-    fromValid = false;  
-    toValid = false;         
-    fromCube.position.y = -0.2;
-    toCube.position.y = -0.2;
-    renderer.render( scene, camera );        
-    for (const radioButton of radioButtons) {
-        if (radioButton.checked) {
-            modality = radioButton.value;
-            console.log("new modality " + modality);
-            break;
-        }
-    }
-}
- 
-setModality();
-
-const cellButtons = 
-  document.querySelectorAll('input[name="Show Cell"]');
-
-for (const cellButton of cellButtons) {
-    cellButton.addEventListener("click", setCell, false);
-}
-
-var cellFlag = true;
-
-function setCell() {
-    cleanCells();
-    cellFlag = cellButtons[0].checked;
-    if (cellFlag) {
-      scene.remove(grid)
-    } else {
-      scene.add(grid);
-    }
-    renderer.render( scene, camera );
-    getCells();
-}
-
-setCell();
- 
-function printVal (v) {
-    let v1 = v + 0.5 + (gSize/2);
-    let val = "";
-    if (v1 < 10) {
-        val += "0";
-    }
-    return val + v1 + "/" + gSize;
-}
-
-function printState() {
-  let val = "Borders \n";
-  for (const boarder of borders) {
-    val += "from (" + printVal(boarder.fX) + ", " + printVal(boarder.fZ) + 
-            ") -> (" + 
-            printVal(boarder.tX) + ", " + printVal(boarder.tZ) + ")\n";  
-  }
-  val += "Obstables\n";
-  for (const obstacle of obstacles) {
-    val += "from (" + printVal(obstacle.fX) + ", " + printVal(obstacle.fZ)
-            + ") -> (" + 
-            printVal(obstacle.tX) + ", " + printVal(obstacle.tZ) + ")\n";  
-  } 
-  val += "Position\n";
-  val += "Start (" + printVal(positions.fX) + ", " + printVal(positions.fZ) + ") To (" + 
-            printVal(positions.tX) + ", " + printVal(positions.tZ) + ")\n";
-  setTimeout(() => {  alert(val); }, 1000);  
-}
-
+// Function to output a value v
 function outVal (v) {
     let v1 = v + 0.5 + (gSize/2);
     let val = "+" + (2 * v1) + " " + "+" + (2 * gSize) + " "
     return val;
 }
 
-console.log(curves.length);
-
-function cleanCurves () {
-    let i = 0; 
-    console.log("curves " + curves);
-    while (i < curves.length)
-    for (const curve of curves) {
-        scene.remove(curves[i]);
-        i++;
-    }
-    renderer.render( scene, camera ); 
-    curves = [];
+function getCells() {
+  if (!cellsFlag) {
+    return;
+  }
+  let val = "";
+  if (borders.length != 2) {
+    return;
+  }
+  if (borders[0].fZ <= borders[1].fZ) {
+    val += outVal(borders[0].fX) + outVal(borders[0].fZ) + 
+           outVal(borders[0].tX) + outVal(borders[0].tZ);  
+    val += outVal(borders[1].fX) + outVal(borders[1].fZ) + 
+           outVal(borders[1].tX) + outVal(borders[1].tZ);  
+  } else {
+    val += outVal(borders[1].fX) + outVal(borders[1].fZ) + 
+           outVal(borders[1].tX) + outVal(borders[1].tZ);  
+    val += outVal(borders[0].fX) + outVal(borders[0].fZ) + 
+           outVal(borders[0].tX) + outVal(borders[0].tZ);  
+  }
+  for (const obstacle of obstacles) {
+    val += outVal(obstacle.fX) + outVal(obstacle.fZ)
+            + outVal(obstacle.tX) + outVal(obstacle.tZ);  
+  } 
+  console.log("boarders " + borders.length + " obstacles " + obstacles.length);
+  console.log("val " + val);
+  let res = ocamlLib.cells(val);
+  console.log("res " + res);
+  let res1 = res.split(' ').map(Number);
+  console.log("res1 length" + res1.length);
+  console.log("res1[0]=" + res1[0]);
+  console.log("res1[res1.length - 1]=" + res1[res1.length - 1]);
+  let i = 0;
+  while (i < res1.length - 1) {
+    /* Straight line */
+    let fx = res1[i] / res1 [i + 1] * gSize - 0.5 - gSize/2;
+    let fy = 0.3;
+    let fz = res1[i + 2] / res1 [i + 3] * gSize - 0.5 - gSize/2;
+    let tx = res1[i + 4] / res1 [i + 5] * gSize - 0.5 - gSize/2;
+    let ty = 0.3;
+    let tz = res1[i + 6] / res1 [i + 7] * gSize - 0.5 - gSize/2;
+    console.log("Adding a dotted line" + fx + " " + fz + " " + tx + " " + tz);
+    let epoints = [];
+     epoints.push( new THREE.Vector3(fx, fy, fz) );
+     epoints.push( new THREE.Vector3(tx, ty, tz));
+    let egeometry = new THREE.BufferGeometry().setFromPoints( epoints );
+    let sline = new THREE.Line( egeometry, dmaterial );
+    sline.computeLineDistances();
+    cells.push(sline);
+    scene.add( sline );
+    renderer.render( scene, camera );
+    i += 8;
+  }
 }
 
 function cleanCells () {
@@ -330,6 +222,37 @@ function cleanCells () {
     }
     renderer.render( scene, camera ); 
     cells = [];
+}
+
+function setCells() {
+    cleanCells();
+    cellsFlag = cellsButtons[0].checked;
+    if (cellsFlag) {
+      scene.remove(grid)
+    } else {
+      scene.add(grid);
+    }
+    renderer.render( scene, camera );
+    getCells();
+}
+
+setCells();
+
+/* The curve */
+
+var curves = [];
+const cmaterial = new THREE.LineBasicMaterial( { color: 'brown' } );
+
+function cleanCurve () {
+    let i = 0; 
+    console.log("curves " + curves);
+    while (i < curves.length)
+    for (const curve of curves) {
+        scene.remove(curve);
+        i++;
+    }
+    renderer.render( scene, camera ); 
+    curves = [];
 }
 
 function getCurve() {
@@ -409,56 +332,115 @@ function getCurve() {
   }
 }
 
-function getCells() {
-  if (!cellFlag) {
-    return;
-  }
-  let val = "";
-  if (borders.length != 2) {
-    return;
-  }
-  if (borders[0].fZ <= borders[1].fZ) {
-    val += outVal(borders[0].fX) + outVal(borders[0].fZ) + 
-           outVal(borders[0].tX) + outVal(borders[0].tZ);  
-    val += outVal(borders[1].fX) + outVal(borders[1].fZ) + 
-           outVal(borders[1].tX) + outVal(borders[1].tZ);  
-  } else {
-    val += outVal(borders[1].fX) + outVal(borders[1].fZ) + 
-           outVal(borders[1].tX) + outVal(borders[1].tZ);  
-    val += outVal(borders[0].fX) + outVal(borders[0].fZ) + 
-           outVal(borders[0].tX) + outVal(borders[0].tZ);  
-  }
-  for (const obstacle of obstacles) {
-    val += outVal(obstacle.fX) + outVal(obstacle.fZ)
-            + outVal(obstacle.tX) + outVal(obstacle.tZ);  
-  } 
-  console.log("boarders " + borders.length + " obstacles " + obstacles.length);
-  console.log("val " + val);
-  let res = ocamlLib.cells(val);
-  console.log("res " + res);
-  let res1 = res.split(' ').map(Number);
-  console.log("res1 length" + res1.length);
-  console.log("res1[0]=" + res1[0]);
-  console.log("res1[res1.length - 1]=" + res1[res1.length - 1]);
-  let i = 0;
-  while (i < res1.length - 1) {
-    /* Straight line */
-    let fx = res1[i] / res1 [i + 1] * gSize - 0.5 - gSize/2;
-    let fy = 0.3;
-    let fz = res1[i + 2] / res1 [i + 3] * gSize - 0.5 - gSize/2;
-    let tx = res1[i + 4] / res1 [i + 5] * gSize - 0.5 - gSize/2;
-    let ty = 0.3;
-    let tz = res1[i + 6] / res1 [i + 7] * gSize - 0.5 - gSize/2;
-    console.log("Adding a dotted line" + fx + " " + fz + " " + tx + " " + tz);
-    let epoints = [];
-     epoints.push( new THREE.Vector3(fx, fy, fz) );
-     epoints.push( new THREE.Vector3(tx, ty, tz));
-    let egeometry = new THREE.BufferGeometry().setFromPoints( epoints );
-    let sline = new THREE.Line( egeometry, dmaterial );
-    sline.computeLineDistances();
-    cells.push(sline);
-    scene.add( sline );
-    renderer.render( scene, camera );
-    i += 8;
-  }
+
+/* The modality */
+
+var modality = "";
+
+const radioButtons = 
+  document.querySelectorAll('input[name="modality"]');
+
+for (const radioButton of radioButtons) {
+    radioButton.addEventListener("click", setModality, false);
+}
+
+function setModality() {
+    cleanCurve();
+    fromValid = false;  
+    toValid = false;         
+    fromCube.position.y = -0.2;
+    toCube.position.y = -0.2;
+    renderer.render( scene, camera );        
+    for (const radioButton of radioButtons) {
+        if (radioButton.checked) {
+            modality = radioButton.value;
+            console.log("new modality " + modality);
+            break;
+        }
+    }
+}
+ 
+setModality();
+
+
+/* The mouse */
+var mouse = new THREE.Vector2();
+var raycaster = new THREE.Raycaster();
+renderer.domElement.addEventListener('click', onDocumentMouseDown, false);
+// store the from and to position 
+var positions;
+
+function onDocumentMouseDown( event ) {
+
+    // Get screen-space x/y
+    mouse.x = ( event.clientX / renderer.domElement.clientWidth ) * 2 - 1;
+    mouse.y = - ( event.clientY / renderer.domElement.clientHeight ) * 2 + 1;
+
+    // Perform raycast
+    raycaster.setFromCamera( mouse, camera );
+
+    // See if the ray from the camera into the world hits our mesh
+    const intersects = raycaster.intersectObject( boardCube );
+
+    // Check if an intersection took place
+    if ( intersects.length == 0 ) {
+        return;
+    }
+    let posX = intersects[0].point.x;
+    let posZ = intersects[0].point.z;
+    let dZ = Math.abs(Math.trunc(posZ) - posZ);
+    let dX = Math.abs(Math.trunc(posX) - posX);
+/*    if (((dZ < 0.05) || (0.95 < dZ)) || (dX < 0.05) || (0.95 < dX)) {
+        return;
+    }
+*/
+    if (toValid && (modality == "positions")) {
+        fromValid = false;
+        toValid = false;
+        fromCube.position.y = -0.2;
+        toCube.position.y = -0.2;
+        cleanCurve();
+        renderer.render( scene, camera );  
+    }
+    if (fromValid) {
+        toZ = Math.round(gSize + posZ + 0.5) -gSize - 0.5;
+        toX = Math.round(gSize + posX + 0.5) -gSize - 0.5;
+        if ((fromX == toX) && (fromZ != toZ) && (modality == "obstacles")) {
+            return;
+        }
+        console.log("modality = " + modality);
+        if (modality == "obstacles") {
+            fromValid = false;  
+            toValid = true;         
+            if ((fromX == toX) && (fromZ == toZ)) {
+                fromCube.position.y = -0.2;
+                toCube.position.y = -0.2;
+                renderer.render( scene, camera ); 
+                return;
+            }
+            cleanCurve();
+            addObstacle(fromX, fromZ, toX, toZ);
+        }
+        if (modality == "positions") {
+            fromValid = true;         
+            toValid = true;         
+            toCube.position.z = toZ;
+            toCube.position.y = toY;
+            toCube.position.x = toX;
+            renderer.render( scene, camera );
+            positions = {fX : fromX, fZ : fromZ, tX : toX, tZ : toZ }
+            cleanCurve();
+            getCurve();
+        }
+    } else {
+        fromValid = true;         
+        fromZ = Math.round(gSize + posZ + 0.5) -gSize - 0.5;
+        fromX = Math.round(gSize + posX + 0.5) -gSize - 0.5;
+        fromCube.position.z = fromZ;
+        fromCube.position.y = fromY;
+        fromCube.position.x = fromX;
+        toCube.position.y = -0.2;
+        cleanCurve();
+        renderer.render( scene, camera );
+    }
 }
