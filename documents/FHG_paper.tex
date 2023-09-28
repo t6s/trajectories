@@ -1,0 +1,268 @@
+\documentclass{easychair}
+
+\title{Safe smooth paths between straight line obstacles}
+\author{Yves Bertot}
+\institute{Inria Université Côte d'Azur}
+\begin{document}
+\maketitle
+
+One benefit of formal verification is the removal of design errors at early
+stages of complex artefacts.  This is being used extensively for software,
+where formal models can be so precise that there exists a direct production
+process from the formal models to actually running software, and the results
+are impressive.  We wish to
+extend this to domains where the distance between the formal model and the
+real application is bigger, because our knowledge of physics in incomplete,
+the world needs to be represented through geometrical abstractions, and
+there are limitations to what computers can compute accurately and what
+sensors and actuators can do in terms of precision.
+
+In short, we would like to apply formal methods to robots, but to begin with
+we will look only at a question involving geometry.  
+We wish to present a comprehensive Coq program
+to compute trajectories for a point between obstacles that are given by straight
+line segments.
+
+\section{A combination of algorithms}
+The Coq program contains four phases, where each corresponds to a different
+algorithm.  For the first phases, the basic blocks are concerned with
+converting the geometry of the problem into a discrete problem, using sorting
+and a recursive treatment of the obtained sorted list.  The result of the
+first two phases consists in a collection of cells, where each cell is
+a convex polygon connected to neighbors by safe boundaries that can
+be crossed with collision with the obstacles.  The problem becomes the problem
+of moving between cells. This
+is then used to construct an abstract view of the trajectory, viewed simply
+as a path between cells.  For this phase, a
+simple graph algorithm is used.  The trajectory is
+then built first as a broken line from the extremities to boundaries
+of the cells that contain them, and then between boundaries.  This
+broken line already represents a possible path, which is easy to prove correct
+thanks to the relations between convex polygons and straight line segments.
+However, such a broken line is unsatisfactory
+as a robot trajectory, because each corner would impose that the robot
+stops to rotate and change direction.  A last phase is added to find
+smooth curved lines in the vicinity of the broken line, and extra proofs are
+required to show that the smooth trajectories still avoid collisions with
+the obstacles.  This phase can itself be decomposed in two parts, where one
+proposes a Bezier curve for testing, and the other checks that the given
+Bezier curve is safe.  In case of failure of the check, a curve that is closer
+to the initial broken line is proposed.  In case where the repetitive process
+does not converge fast enough, it is possible to use the initial broken line as
+a fallback solution.
+
+\subsection{Producing a sequence of events}
+The first objective is to produce a collection of cells with the following
+properties:
+\begin{enumerate}
+\item The interior of each cell is free of obstacles
+\item The parts of the boundaries of these cells that can be crossed
+  safely to reach other cells are known precisely
+\end{enumerate}
+To achieve this objective, we took inspiration from an algorithm known as
+{\em vertical cell decomposition} \cite{Latombe91}.  The intuitive
+operational model of this algorithm is that a vertical line is
+sweeping the working space from left to right.  When the extremity of
+an obstacle segment or the intersection between two obstacle segments
+is encountered, some internal view of the cells is updated, ultimately
+producing a collection of closed cells.  To represent this sweeping
+operations, we chose to implement a sorting algorithm that takes as
+input the list of segments and produces as output a list of {\em
+  events}.  Each event corresponds to an obstacle extremity and is
+annotated with the sequence of segments that have this event as
+leftmost extremity.
+
+At this point in our explanation, note that we chose to
+simplify the problem by assuming that segments never cross and never
+overlap over a portion of their length.  This assumption is not hard
+to satisfy, as it is possible to take a collection of segments which
+do not satisfy this assumption and produce a new collection of
+segments that contain exactly the same points of the plane but satisfy
+the assumption.
+
+The sorting algorithm works as follows: every time an new segment is
+process, an event is inserted in the current sequence of events at the
+right place so that this sequence is sorted lexicographically (first
+coordinated, and then second coordinate).  If the event is already
+present in the sequence, a new occurrence is {\em not} added, but if
+this event is the left extremity of the currently processed
+segment, this segment is added to the event annotation indicating all
+segments whose left extremity is this event.
+
+Another simplification to our presentation of the problem is that
+vertical segments are not allowed in our input.  Again, we think that
+it is possible to work around this limitation: If one wishes to add
+vertical obstacles, only there extremities should be added as events
+without outgoing edges in the sequence of events.  We expect the
+cells to be created where a safe boundary appears between the two
+events.  It is enough to remove this safe boundary from the cells to
+avoid collisions with the corresponding vertical obstacle.  This
+approach is not implemented in our current version of the algorithm.
+
+We assume we are working in some ordered field to represent the
+coordinates.  For the algorithm itself, we shall only use the field
+operations.  For the proofs we need to use some properties of the order.
+The data types that we need to create to describe our algorithm are as
+follows:
+\begin{itemize}
+\item A datatype of points, which are ordered pairs of coordinates in the field,
+\item A datatype of edges (for the obstacles), which are ordered pairs of
+  points, with the invariant that the first coordinate of the first
+  point is stricly smaller than the first coordinate of the second point,
+\item A datatype of events, which have two components, the first is a
+  point and the second is sequence of edges, all of which have this
+  point as first extremity.
+\end{itemize}
+For this algorithm to be correct, we need to guarantee the following
+properties:
+\begin{itemize}
+\item All segments of the initial collection of obstacles must be
+  present among the outgoing edges of events in the output
+\item All segments attached to a given event have this event as first
+  extremity
+\item The sequence of events is strictly sorted lexicographically, as
+  a consequence each edge appears as outgoing edge of a single event.
+\end{itemize}
+
+Processing the sorted list of events then implements the idea of the
+sweeping line from left to right.
+
+\section{Producing cells}
+When producing cells, we disinguish between closed and open cells.
+The closed cells lie to the left of the sweeping line, they are
+complete and have a well-defined left and right sides.  The open cells
+stradle the sweeping line.  They have a well-defined left side,
+but the right side is unknown, as it will be fixed when
+processing later events.
+
+At a given position of the sweeping line, there is an ordered sequence
+of open cells.  For each of these cells, the bottom and the top
+boundary are given by edges.  Each of the open cells also has a
+left side, which was defined at the time the cell was created,
+possibly when processing several examples that all lie on the same
+vertical.
+
+The processing of a new event works as follows:
+\begin{enumerate}
+\item The sequence of open cells is decomposed into three parts:
+a first sequence of untouched cells, a second sequence of cells in
+contact with the given event, and a third sequence of cells of
+untouched cells
+\item All cells in contact are closed: their right side is
+  described and they are added to the collection of closed cells
+\item If the given event has \(n\) ougoing edges, then \(n+1\) new
+  open cells are created.  The outgoing edges are first sorted vertically.
+  The first cell has for its low edge the
+  same low edge as first cell in the first of the contact cells, and
+  as high edge the first of the outgoing edges (after sorting).  The
+  last new cell is similar but with the last outgoing edge and the
+  high edge of the last of contact cells.  All other cells have a
+  left side that is reduced to a single point.
+\end{enumerate}
+For this algorithm to work, we add an extra constraint on the data:
+the whole working space is enclosed between a bottom and a top edge
+that are long enough so that they define a rectancle with no contacts
+with all other edges.
+
+Special care must be taken to handle the case where events are
+vertically aligned.  When this happens, the first naive version of our
+algorithm produces cells that have the left side and the right-
+
+
+
+The algorithm receives as inputs the top and bottom edges, the sequence of segments,
+and two points describing the source and target of the expected trajectory.  All
+points used as obstacle extremities or as source and target for the trajectory are
+given by cartesian coordinates.  All computations can be done using rational numbers,
+but proofs require a more advanced number system (the field must at least
+be real closed).
+
+The result is either a sequence of trajectory elements or an exceptional value, called
+{\tt None} , based
+on the well-known {\tt option} datatype.  When the result is not {\tt None},
+the following properties are guaranteed:
+\begin{itemize}
+\item Each of the trajectory elements is either a segment or Bezier curve,
+\item The sequence of trajectory elements form a continuous path,
+\item None of the trajectory elements has an intersection with either
+the {\tt top} and {\tt bottom} edges or the obstracles.
+\end{itemize}
+This is work in progress and not all proofs have been completed.
+
+\section{events}
+The first and second phase combine to implement a {\em vertical cell decomposition}.
+The mental model used to explain this algorithm is that a sweeping line moves from
+left to right and stops every time an obstacle extremity is encountered.
+
+To mimick this sweeping operation, we pre-process the segments
+to obtain a sorted list of events, where each event is essentially the extremity
+of one of the segments describing the obstacles.  This consists in taking as input
+the list of obstacles and producing as output the sorted list of events.
+\section{Vertical cells}
+When processing the sequence of events, a sequence of open cells is maintained and a set
+of closed cells is produced.  The open cells are cells where
+the left-hand side is already known, but the right side is not yet known because
+the right extremities of the cells below and above these cells have not been process
+yet.  The invariants that we expect for these collections are as follows:
+\begin{itemize}
+\item The open cells span the whole vertical line between the bottom and top edges
+and they are vertically sorted
+\item The high and low edges for each open cell encounter the sweeping line
+\item All obstacles whose left point is left of the sweeping line are covered by the
+top edge of one of the closed or open cells
+\item All cells, whether open or closed are pairwise disjoint
+\end{itemize}
+The processing works by decomposing the sequencce of open cells into three sub-sequences
+where the middle one contains all open cells that are in contact with the event being
+processed.  These contact cells are closed and a new subsequences of cells is produced by
+processing the list of obstacles whose left point is given by this event.  Special care
+is taken to guarantee that the closed cells are non-empty, the problem happens when
+two successive events are vertically aligned.
+\section{Broken line trajectory}
+Once the vertical cell decomposition is finished, we can start drawing trajectories
+between arbitrary points in the work space.  This is done by finding the cells containing
+the source and target points and then jumping from cell to neighboring
+cell.  This is performed with a simple breadth-first search algorithm in the discrete graph
+where the nodes are the cells and the edges connect neighbors.
+
+We call {\em doors} the vertical boundaries between two
+adjacent cells, and we can easily transform a discrete path from cell to cell into a discrete
+path between doors.  Special care must be taken when entering and leaving a cell
+through the same vertical.  In this case, we add a visit to the cell center.
+
+The result is a sequence of straight line segments going from
+door center to door center, with an occasional visit to a cell center.
+The correctness of this trajectory is based on the property that it is
+safe to move from a door into a cell to a door out of the cell.
+\section{Making a smooth trajectory}
+We use Bezier curves to smoothen each change of direction, and we verify that
+the Bezier curves still remain in safe territory.
+
+Each Bezier curve is defined by a sequence of control points, with the properties that 
+the curve connects the first and last control point, it is contained in the convex hull
+of the control points, and it is tangent to the segments
+given by the first two and last two control points.  The first property helps guaranteeing
+that the curves are trajectory still connects the same source and taget, the second property
+is used to prove that the trajectory does collide with the obstacles.
+
+In our program, we first produce a candidate Bezier curve for each corner, and
+we then check whether this curve is safe.  If not, we produce Bezier curves,
+that are closer to the broken line and repeatedly check their safety.  After a limited number
+of iterations, the program falls back to the initial broken line corner if need be.
+We only wish to prove that the checking procedure is correct.
+
+Many of the elementary components were developed by collaborators: Thomas Portet
+worked on the vertical cell decomposition algorithm and Quentin Vermande worked on
+the general properties of Bezier curves and collisions with a convex hull.  Some
+parts of the program also rely on finite maps provided by the Coq standard library.
+
+\section{Exploiting the program and visual feedback}
+This program can be run inside Coq, using rational numbers for the numbers system.
+The output can be displayed by simply traversing the output data structure and generating
+simple postscript commands for each of the straight line or Bezier curve segment.  Our
+program uses quadratic Bezier curves, while postscript supports cubic Bezier curves, but
+converting from one to the other is easy.  A Javascript user-interface for this geometric
+program is also under study.
+\end{document}
+
+
