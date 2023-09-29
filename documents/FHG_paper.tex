@@ -166,95 +166,180 @@ with all other edges.
 
 Special care must be taken to handle the case where events are
 vertically aligned.  When this happens, the first naive version of our
-algorithm produces cells that have the left side and the right-
+algorithm produces cells that have the left side and the right side on the
+same vertical line.  These cells are flat and do not satisfy two important
+properties that we like about non-empty cells.  First in a non-flat cell,
+any path from a safe point on the left side to a safe point on the
+right side is safe.  Second, in a non-flat cell, any path to a safe
+point on any side to the center of the cell is safe.
 
+To recover these properties, we modified our algorithm to memorize the
+position of the last processed event, together with the last opened
+cell and the last closed cell.  When the current event is vertically
+aligned with the last processed event, we can avoid creating a flat
+closed cell by updating the last opened cell and the last closed
+cell.  However, this adds complexity in the proofs about the
+algorithm.
 
-
-The algorithm receives as inputs the top and bottom edges, the sequence of segments,
-and two points describing the source and target of the expected trajectory.  All
-points used as obstacle extremities or as source and target for the trajectory are
-given by cartesian coordinates.  All computations can be done using rational numbers,
-but proofs require a more advanced number system (the field must at least
-be real closed).
-
-The result is either a sequence of trajectory elements or an exceptional value, called
-{\tt None} , based
-on the well-known {\tt option} datatype.  When the result is not {\tt None},
-the following properties are guaranteed:
+At the moment of writing these lines, this modified vertical cell
+decomposition algorithm is still being proved correct.  We proceed by
+showing that a collection of properties are invariant through the
+processing of events.  The properties that we have proved invariant so
+far are as follows:
 \begin{itemize}
-\item Each of the trajectory elements is either a segment or Bezier curve,
-\item The sequence of trajectory elements form a continuous path,
-\item None of the trajectory elements has an intersection with either
-the {\tt top} and {\tt bottom} edges or the obstracles.
+\item The sequence of open cells is sorted vertically, the cells are
+  adjacent, and they cover the whole space between the bottom and top
+  edges,
+\item All low and high edge of the current open cells contain a point
+that is vertically aligned with the currently processed event,
+\item All cells are disjoint,
+\item The obstacles are covered by the high edges of existing cells,
+  closed or open and the outgoing edges of events that have not been
+  processed yet.
 \end{itemize}
-This is work in progress and not all proofs have been completed.
+The last two properties put together should be enough to guarantee
+that the interior of all closed cells is safe.  We have yet to
+understand how we will express and prove safety properties for points
+on the left and right sides of closed cells.
 
-\section{events}
-The first and second phase combine to implement a {\em vertical cell decomposition}.
-The mental model used to explain this algorithm is that a sweeping line moves from
-left to right and stops every time an obstacle extremity is encountered.
+For now, the left and right sides of closed edges are equiped with
+list of points, where the first one belongs to the cell's high edge
+and the last one belongs to the cells low edge.  The other points on
+these lists correspond to extrimities of edges that end or start on
+this side.  The points on the side of an edge that are distinct from
+the elements of these lists are also safe.  The intervals between the
+points of these lists correspond to vertical segments that are doors
+between the cell and neighbor cells.  There is a safe horizontal
+pasage between two cells if the left side of one cell and the right
+side of the other have such a door in common.  We use this criterion
+to construct a graph whose nodes are the cells and whose edges are
+doors between one cell and the other.
 
-To mimick this sweeping operation, we pre-process the segments
-to obtain a sorted list of events, where each event is essentially the extremity
-of one of the segments describing the obstacles.  This consists in taking as input
-the list of obstacles and producing as output the sorted list of events.
-\section{Vertical cells}
-When processing the sequence of events, a sequence of open cells is maintained and a set
-of closed cells is produced.  The open cells are cells where
-the left-hand side is already known, but the right side is not yet known because
-the right extremities of the cells below and above these cells have not been process
-yet.  The invariants that we expect for these collections are as follows:
-\begin{itemize}
-\item The open cells span the whole vertical line between the bottom and top edges
-and they are vertically sorted
-\item The high and low edges for each open cell encounter the sweeping line
-\item All obstacles whose left point is left of the sweeping line are covered by the
-top edge of one of the closed or open cells
-\item All cells, whether open or closed are pairwise disjoint
-\end{itemize}
-The processing works by decomposing the sequencce of open cells into three sub-sequences
-where the middle one contains all open cells that are in contact with the event being
-processed.  These contact cells are closed and a new subsequences of cells is produced by
-processing the list of obstacles whose left point is given by this event.  Special care
-is taken to guarantee that the closed cells are non-empty, the problem happens when
-two successive events are vertically aligned.
-\section{Broken line trajectory}
-Once the vertical cell decomposition is finished, we can start drawing trajectories
-between arbitrary points in the work space.  This is done by finding the cells containing
-the source and target points and then jumping from cell to neighboring
-cell.  This is performed with a simple breadth-first search algorithm in the discrete graph
-where the nodes are the cells and the edges connect neighbors.
+\section{Making a broken line trajectory between two points}
+With the graph of cells and doors between these cells, we can already
+construct safe paths between two points in the space, which we shall
+the source and target points for clarity.  We only need the source and
+target to be either inside the same polygon made of obstacles, or
+inside the work space and outside of any polygon.
 
-We call {\em doors} the vertical boundaries between two
-adjacent cells, and we can easily transform a discrete path from cell to cell into a discrete
-path between doors.  Special care must be taken when entering and leaving a cell
-through the same vertical.  In this case, we add a visit to the cell center.
+The first step is to find the two cells that contain the source and
+the target.  If these two cells are the same and the source and target
+are on the interior, then it is enough draw a straight line segment from the
+source to the target.
 
-The result is a sequence of straight line segments going from
-door center to door center, with an occasional visit to a cell center.
-The correctness of this trajectory is based on the property that it is
-safe to move from a door into a cell to a door out of the cell.
+If the two cells are different, we can explore the graph to check for
+the existence of a path in this graph from the source cell to the
+target cell.  Ths path is composed of edges of the graph and each of
+the graph edges is actually a door between two cells.  It is enough to
+construct a sequence of paths between the middle points of each door
+that is an element of this path.  If two successive doors are not on the same
+vertical line, these two doors are on both sides a same cell.  A
+straight segment from the middle of the first door to the middle of
+the second door is a safe path in the interior of the cell (this
+property would not be satisfied if the cell was flat).
+
+When two successive doors are on the same verical line, a straight
+line between the center of one door and the center of the other is
+bound to be unsafe, because it will touch the lowest bound of the
+highest of the two doors, and this lowest bound is the extremity of
+some obstacle.  To avoid this, we build a path composed of two
+segments.  The first segment goes from the middle of the first door to
+the center of the cell.  The second segment goes from the center of
+the cell to the middle of the second door.  Such a two segment path is
+safe because the two exremities are safe, and the interior of these
+paths lie inside the interior of the cell, which is safe.
+
+For the formal proofs of this part, we have not started working on
+this, but this should rely on the properties of convex sets, in
+particular that any segment between two points of a convex set are in
+this convex set.
+
 \section{Making a smooth trajectory}
-We use Bezier curves to smoothen each change of direction, and we verify that
-the Bezier curves still remain in safe territory.
+The trajectory described in the previous section is given by a
+sequence of segments, where each segment shares an extremity with its
+predecessor and the other extremity with its successor.  We shall call
+these extremities the {\em corners} of the trajectory.  We wish to
+replace each corner by a smooth curve, in such a way that successive
+curve fragments align.
 
-Each Bezier curve is defined by a sequence of control points, with the properties that 
-the curve connects the first and last control point, it is contained in the convex hull
-of the control points, and it is tangent to the segments
-given by the first two and last two control points.  The first property helps guaranteeing
-that the curves are trajectory still connects the same source and taget, the second property
-is used to prove that the trajectory does collide with the obstacles.
+Such a property is easy to achieve with Bézier curves.  In our case,
+it is enough to use quadratic Bézier curves.  A quadratic Bézier curve
+is given by 3 points (in the same way that a polynomial of degree 2 is
+given by three coefficients).  Given three points \(A\), \(B\), \(C\)
+a point on the corresponding Bézier curve is given by choosing a
+parameter \(t\) between 0 and 1 and computing three more points:
+\(D\) is the barycenter of \(A\) with weight \(1 - t\) and \(B\) with
+weight \(t\), \(E\) is the barycenter of \(B\) with weight \(1 - t\)
+and \(C\) with weight \(t\), and \(F\) is the barycenter of \(D\) with
+weight \(1-t\) and \(E\) with weight \(t\).  The point \(F\) is the
+point on the Bézier curve for the parameter \(t\).  When \(t\) varies
+between \(0\) and \(1\), the point moves on the Béier curve from \(A\)
+to \(C\), generally without passing through \(B\).  The curve that one
+obtains is tangent to the segment \((A,B)\) in \(A\) and tangent to
+the segment \((B,C))\) in \(C\).
 
-In our program, we first produce a candidate Bezier curve for each corner, and
-we then check whether this curve is safe.  If not, we produce Bezier curves,
-that are closer to the broken line and repeatedly check their safety.  After a limited number
-of iterations, the program falls back to the initial broken line corner if need be.
-We only wish to prove that the checking procedure is correct.
+A broken line \(A\) \(B\) \(C\) \(D\) can be transformed into a smooth
+curve by Adding a point \(M\) on the segment between \(B\) and \(C\)
+and replacing the three segments \((A, B)\), \((B, C)\), and \((C,
+D)\) by the two Bézier curves given by points \(A\) \(B\) \(M\) on the
+one hand and \(M\) \(C\) \(D\) on the other hand.  These two curves
+are smooth in their inside, and they connect in \(M\) in such a way
+that their tangent is aligned with the segment \((B, C)\), and in the
+same direction.
 
-Many of the elementary components were developed by collaborators: Thomas Portet
-worked on the vertical cell decomposition algorithm and Quentin Vermande worked on
-the general properties of Bezier curves and collisions with a convex hull.  Some
-parts of the program also rely on finite maps provided by the Coq standard library.
+Our Bezier curve construction starts with a broken line that is safe,
+but the curves stray away from the corners, and in doing so they may
+collide with the obstacles.  We need two more algorithms, one to prove
+that a Bézier curve stays in safe territory, and the other to repair
+trajectories whose Bézier curve do collide with the obstacles.  We
+designed two such algorithms.
+
+These algorithms are based on a strong property of Bézier curves,
+which we shall call the dichotomy property.  In the description above
+where we showed how to construction the point \(F\) which belongs to
+the Bézier curve, it turns out that the triplets \(A\) \(D\) \(F\) and
+\(F\) \(E\) \(C\) define two new Bézier curves that decompose the
+original Bézier curve in two complementary subsets \(A\) \(D\) \(F\)
+covers all the points of \(A\) \(B\) \(C\) for a parameter \(t' \leq
+t\), while \(F\) \(E\) \(C\) covers all the points of \(A\) \(B\)
+\(C\) for a parameter \(t'\geq t\).  The convex hull for \(A\) \(D\)
+\(F\) is much smaller than the convex hull for \(A\) \(B\) \(C\), and
+thus the dichotomy operation makes it possible to replace a gross
+approximation of the Bezier curve by a more precise one.  Our checking
+algorithm repeats this dichotomy operation until it gets enough
+information to conclude that there is a guarantee that the Bezier curve
+is included in the union of the interior of two cells and the door
+between these cells, or that there is a gurantee that the Bézier curve
+steps out of this union, in which case we have proved that the Bézier
+curve is unsafe.
+
+When we have an unsafe Bézier curve, we can repair the situation by
+replacing the Bezier curve \(A\) \(B\) \(C\) by the composite path
+obtained by adding two new points \(M\) and \(N\) which are the
+centers of \((A,B)\) and \((B,C)\) respectively, and taking the
+segment \((A,M)\), the Bézier curve \(M\) \(B\) \(N\), and finally the
+segment \((N, C)\).  This composite path is smooth, because the
+junctions at \(M\) and \(N\) have the same tangent and direction, and
+it is also closer to the initial broken line trajectory.  There is no
+guarantee that this new path is safe, so it needs to be checked again,
+and if need be the replacement process can be repeeted.  Ultimately,
+if the replacement process were repeated indefinitely the limit of the
+smooth path would the broken line path.
+
+In our program, we first produce a candidate Bezier curve for each
+corner, and we then check whether this curve is safe.  If not, we
+produce Bezier curves, that are closer to the broken line and
+repeatedly check their safety.  After alimited number of iterations,
+the program falls back to the initial broken line corner if need be.
+We only wish to prove that the checking procedure is correct.  For
+this program, we will not be able to prove that resulting trajectory
+is smooth.
+
+Many of the elementary components were developed by collaborators:
+Thomas Portet worked on the vertical cell decomposition algorithm and
+Quentin Vermande worked on the general properties of Bezier curves and
+collisions with a convex hull.  Some parts of the program also rely on
+finite maps provided by the Coq standard library.
 
 \section{Exploiting the program and visual feedback}
 This program can be run inside Coq, using rational numbers for the numbers system.
