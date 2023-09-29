@@ -12,16 +12,30 @@ where formal models can be so precise that there exists a direct production
 process from the formal models to actually running software, and the results
 are impressive.  We wish to
 extend this to domains where the distance between the formal model and the
-real application is bigger, because our knowledge of physics in incomplete,
+real application is bigger.  We choose to work on robotics.  For this
+field, there is a large distance between models and real implementations,
+because our knowledge of physics in incomplete,
 the world needs to be represented through geometrical abstractions, and
 there are limitations to what computers can compute accurately and what
 sensors and actuators can do in terms of precision.
 
-In short, we would like to apply formal methods to robots, but to begin with
+In short, we would like to apply formal methods to the full design of
+robots, but to begin with
 we will look only at a question involving geometry.  
 We wish to present a comprehensive Coq program
 to compute trajectories for a point between obstacles that are given by straight
 line segments.
+
+The program we wish to describe formally receives as inputs descriptions of problems like this:
+\begin{center}
+\includegraphics[,trim={0 0 0 10cm}, clip, width=0.3\textwidth]{empty_spiral.pdf}
+\end{center}
+and will produce smooth trajectories like the curved line that appears in this
+picture:
+\begin{center}
+\includegraphics[,trim={0 0 0 10cm}, clip, width=0.3\textwidth]{smooth_spiral_bare.pdf}
+\end{center}
+
 
 \section{A combination of algorithms}
 The Coq program contains four phases, where each corresponds to a different
@@ -30,7 +44,15 @@ converting the geometry of the problem into a discrete problem, using sorting
 and a recursive treatment of the obtained sorted list.  The result of the
 first two phases consists in a collection of cells, where each cell is
 a convex polygon connected to neighbors by safe boundaries that can
-be crossed with collision with the obstacles.  The problem becomes the problem
+be crossed with collision with the obstacles.
+
+For our running example, the result of these first two phases is
+described in the following picture, where cell numbers have been added
+solely to help our understanding.
+\begin{center}
+\includegraphics[,trim={0 0 0 10cm}, clip, width=0.3\textwidth]{cells_spiral2.pdf}
+\end{center}
+The problem becomes one
 of moving between cells. This
 is then used to construct an abstract view of the trajectory, viewed simply
 as a path between cells.  For this phase, a
@@ -39,6 +61,9 @@ then built first as a broken line from the extremities to boundaries
 of the cells that contain them, and then between boundaries.  This
 broken line already represents a possible path, which is easy to prove correct
 thanks to the relations between convex polygons and straight line segments.
+\begin{center}
+\includegraphics[,trim={0 0 0 10cm}, clip, width=0.3\textwidth]{spiral_bline.pdf}
+\end{center}
 However, such a broken line is unsatisfactory
 as a robot trajectory, because each corner would impose that the robot
 stops to rotate and change direction.  A last phase is added to find
@@ -130,7 +155,7 @@ sweeping line from left to right.
 \section{Producing cells}
 When producing cells, we disinguish between closed and open cells.
 The closed cells lie to the left of the sweeping line, they are
-complete and have a well-defined left and right sides.  The open cells
+complete and have well-defined left and right sides.  The open cells
 stradle the sweeping line.  They have a well-defined left side,
 but the right side is unknown, as it will be fixed when
 processing later events.
@@ -150,14 +175,15 @@ contact with the given event, and a third sequence of cells of
 untouched cells
 \item All cells in contact are closed: their right side is
   described and they are added to the collection of closed cells
-\item If the given event has \(n\) ougoing edges, then \(n+1\) new
+\item If the given event has \(n\) outgoing edges, then \(n+1\) new
   open cells are created.  The outgoing edges are first sorted vertically.
   The first cell has for its low edge the
   same low edge as first cell in the first of the contact cells, and
   as high edge the first of the outgoing edges (after sorting).  The
   last new cell is similar but with the last outgoing edge and the
-  high edge of the last of contact cells.  All other cells have a
-  left side that is reduced to a single point.
+  high edge of the last contact cell.  All other newly created cells have a
+  left side that is reduced to a single point, because the low and
+  high edges meet at the event that is currently processed.
 \end{enumerate}
 For this algorithm to work, we add an extra constraint on the data:
 the whole working space is enclosed between a bottom and a top edge
@@ -165,7 +191,7 @@ that are long enough so that they define a rectancle with no contacts
 with all other edges.
 
 Special care must be taken to handle the case where events are
-vertically aligned.  When this happens, the first naive version of our
+vertically aligned.  When this happens, a naive version of our
 algorithm produces cells that have the left side and the right side on the
 same vertical line.  These cells are flat and do not satisfy two important
 properties that we like about non-empty cells.  First in a non-flat cell,
@@ -178,7 +204,8 @@ position of the last processed event, together with the last opened
 cell and the last closed cell.  When the current event is vertically
 aligned with the last processed event, we can avoid creating a flat
 closed cell by updating the last opened cell and the last closed
-cell.  However, this adds complexity in the proofs about the
+cell.  For last closed cell, only the obstacles on the right side need
+to be update.  However, this adds complexity in the proofs about the
 algorithm.
 
 At the moment of writing these lines, this modified vertical cell
@@ -205,7 +232,7 @@ on the left and right sides of closed cells.
 For now, the left and right sides of closed edges are equiped with
 list of points, where the first one belongs to the cell's high edge
 and the last one belongs to the cells low edge.  The other points on
-these lists correspond to extrimities of edges that end or start on
+these lists correspond to extremities of edges that end or start on
 this side.  The points on the side of an edge that are distinct from
 the elements of these lists are also safe.  The intervals between the
 points of these lists correspond to vertical segments that are doors
@@ -249,10 +276,17 @@ the cell to the middle of the second door.  Such a two segment path is
 safe because the two exremities are safe, and the interior of these
 paths lie inside the interior of the cell, which is safe.
 
+Examples of safe paths between doors are given in the following
+picture:
+\begin{center}
+\includegraphics[,trim={0 0 0 10cm}, clip, width=0.3\textwidth]{spiral_safe3.pdf}
+\end{center}
+
+
 For the formal proofs of this part, we have not started working on
 this, but this should rely on the properties of convex sets, in
-particular that any segment between two points of a convex set are in
-this convex set.
+particular that any segment between two points of a convex set is
+included in this convex set.
 
 \section{Making a smooth trajectory}
 The trajectory described in the previous section is given by a
@@ -276,10 +310,15 @@ point on the Bézier curve for the parameter \(t\).  When \(t\) varies
 between \(0\) and \(1\), the point moves on the Béier curve from \(A\)
 to \(C\), generally without passing through \(B\).  The curve that one
 obtains is tangent to the segment \((A,B)\) in \(A\) and tangent to
-the segment \((B,C))\) in \(C\).
+the segment \((B,C)\) in \(C\).
+
+\begin{center}
+\includegraphics[,trim={0 5cm 0 17cm}, clip, width=0.3\textwidth]{bezier_example3.pdf}
+\end{center}
+
 
 A broken line \(A\) \(B\) \(C\) \(D\) can be transformed into a smooth
-curve by Adding a point \(M\) on the segment between \(B\) and \(C\)
+curve by adding a point \(M\) on the segment between \(B\) and \(C\)
 and replacing the three segments \((A, B)\), \((B, C)\), and \((C,
 D)\) by the two Bézier curves given by points \(A\) \(B\) \(M\) on the
 one hand and \(M\) \(C\) \(D\) on the other hand.  These two curves
