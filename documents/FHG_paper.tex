@@ -7,11 +7,9 @@
 \maketitle
 
 One benefit of formal verification is the removal of design errors at early
-stages of complex artefacts.  This is being used extensively for software,
-where formal models can be so precise that there exists a direct production
-process from the formal models to actually running software, and the results
-are impressive.  We wish to
-extend this to domains where the distance between the formal model and the
+stages of complex artifacts.  This is being used extensively for software
+with great success.  We wish to
+extend this to domains where the distance between formal models and the
 real application is bigger.  We choose to work on robotics.  For this
 field, there is a large distance between models and real implementations,
 because our knowledge of physics in incomplete,
@@ -19,8 +17,7 @@ the world needs to be represented through geometrical abstractions, and
 there are limitations to what computers can compute accurately and what
 sensors and actuators can do in terms of precision.
 
-In short, we would like to apply formal methods to the full design of
-robots, but to begin with
+To begin with
 we will look only at a question involving geometry.  
 We wish to present a comprehensive Coq program
 to compute trajectories for a point between obstacles that are given by straight
@@ -28,12 +25,12 @@ line segments.
 
 The program we wish to describe formally receives as inputs descriptions of problems like this:
 \begin{center}
-\includegraphics[,trim={0 0 0 10cm}, clip, width=0.3\textwidth]{empty_spiral.pdf}
+\includegraphics[,trim={0 0 0 8cm}, clip, width=0.3\textwidth]{empty_spiral.pdf}
 \end{center}
 and will produce smooth trajectories like the curved line that appears in this
 picture:
 \begin{center}
-\includegraphics[,trim={0 0 0 10cm}, clip, width=0.3\textwidth]{smooth_spiral_bare.pdf}
+\includegraphics[,trim={0 0 0 8cm}, clip, width=0.3\textwidth]{smooth_spiral_bare.pdf}
 \end{center}
 
 
@@ -50,19 +47,19 @@ For our running example, the result of these first two phases is
 described in the following picture, where cell numbers have been added
 solely to help our understanding.
 \begin{center}
-\includegraphics[,trim={0 0 0 10cm}, clip, width=0.3\textwidth]{cells_spiral2.pdf}
+\includegraphics[,trim={0 0 0 8cm}, clip, width=0.3\textwidth]{cells_spiral2.pdf}
 \end{center}
-The problem becomes one
-of moving between cells. This
-is then used to construct an abstract view of the trajectory, viewed simply
-as a path between cells.  For this phase, a
-simple graph algorithm is used.  The trajectory is
-then built first as a broken line from the extremities to boundaries
-of the cells that contain them, and then between boundaries.  This
-broken line already represents a possible path, which is easy to prove correct
-thanks to the relations between convex polygons and straight line segments.
+The problem becomes one of moving between cells. This is then used to
+construct an abstract view of the trajectory, viewed simply as a path
+between cell boundaries.  For this phase, a simple graph algorithm is
+used.  The trajectory is then built first as a broken line from the
+extremities to boundaries of the cells that contain them, and then
+between boundaries.  This broken line already represents a possible
+path, and we hope to prove that this path is safe thanks to the fact
+that cells are convex and the segments are each almost included in one
+cell at a time.
 \begin{center}
-\includegraphics[,trim={0 0 0 10cm}, clip, width=0.3\textwidth]{spiral_bline.pdf}
+\includegraphics[,trim={0 0 0 8cm}, clip, width=0.3\textwidth]{spiral_bline.pdf}
 \end{center}
 However, such a broken line is unsatisfactory
 as a robot trajectory, because each corner would impose that the robot
@@ -70,13 +67,13 @@ stops to rotate and change direction.  A last phase is added to find
 smooth curved lines in the vicinity of the broken line, and extra proofs are
 required to show that the smooth trajectories still avoid collisions with
 the obstacles.  This phase can itself be decomposed in two parts, where one
-proposes a Bezier curve for testing, and the other checks that the given
-Bezier curve is safe.  In case of failure of the check, a curve that is closer
+proposes a Bézier curve for testing, and the other checks that the given
+Bézier curve is safe.  In case of failure of the check, a curve that is closer
 to the initial broken line is proposed.  In case where the repetitive process
 does not converge fast enough, it is possible to use the initial broken line as
 a fallback solution.
 
-\subsection{Producing a sequence of events}
+\section{Producing a sequence of events}
 The first objective is to produce a collection of cells with the following
 properties:
 \begin{enumerate}
@@ -133,7 +130,7 @@ follows:
 \item A datatype of points, which are ordered pairs of coordinates in the field,
 \item A datatype of edges (for the obstacles), which are ordered pairs of
   points, with the invariant that the first coordinate of the first
-  point is stricly smaller than the first coordinate of the second point,
+  point is strictly smaller than the first coordinate of the second point,
 \item A datatype of events, which have two components, the first is a
   point and the second is sequence of edges, all of which have this
   point as first extremity.
@@ -153,10 +150,10 @@ Processing the sorted list of events then implements the idea of the
 sweeping line from left to right.
 
 \section{Producing cells}
-When producing cells, we disinguish between closed and open cells.
+When producing cells, we distinguish between closed and open cells.
 The closed cells lie to the left of the sweeping line, they are
 complete and have well-defined left and right sides.  The open cells
-stradle the sweeping line.  They have a well-defined left side,
+straddle the sweeping line.  They have a well-defined left side,
 but the right side is unknown, as it will be fixed when
 processing later events.
 
@@ -187,14 +184,14 @@ untouched cells
 \end{enumerate}
 For this algorithm to work, we add an extra constraint on the data:
 the whole working space is enclosed between a bottom and a top edge
-that are long enough so that they define a rectancle with no contacts
+that are long enough so that they define a rectangle with no contacts
 with all other edges.
 
 Special care must be taken to handle the case where events are
 vertically aligned.  When this happens, a naive version of our
 algorithm produces cells that have the left side and the right side on the
 same vertical line.  These cells are flat and do not satisfy two important
-properties that we like about non-empty cells.  First in a non-flat cell,
+properties that we like about nonempty cells.  First in a non-flat cell,
 any path from a safe point on the left side to a safe point on the
 right side is safe.  Second, in a non-flat cell, any path to a safe
 point on any side to the center of the cell is safe.
@@ -229,7 +226,7 @@ that the interior of all closed cells is safe.  We have yet to
 understand how we will express and prove safety properties for points
 on the left and right sides of closed cells.
 
-For now, the left and right sides of closed edges are equiped with
+For now, the left and right sides of closed edges are equipped with
 list of points, where the first one belongs to the cell's high edge
 and the last one belongs to the cells low edge.  The other points on
 these lists correspond to extremities of edges that end or start on
@@ -237,7 +234,7 @@ this side.  The points on the side of an edge that are distinct from
 the elements of these lists are also safe.  The intervals between the
 points of these lists correspond to vertical segments that are doors
 between the cell and neighbor cells.  There is a safe horizontal
-pasage between two cells if the left side of one cell and the right
+passage between two cells if the left side of one cell and the right
 side of the other have such a door in common.  We use this criterion
 to construct a graph whose nodes are the cells and whose edges are
 doors between one cell and the other.
@@ -256,7 +253,7 @@ source to the target.
 
 If the two cells are different, we can explore the graph to check for
 the existence of a path in this graph from the source cell to the
-target cell.  Ths path is composed of edges of the graph and each of
+target cell.  This path is composed of edges of the graph and each of
 the graph edges is actually a door between two cells.  It is enough to
 construct a sequence of paths between the middle points of each door
 that is an element of this path.  If two successive doors are not on the same
@@ -265,7 +262,7 @@ straight segment from the middle of the first door to the middle of
 the second door is a safe path in the interior of the cell (this
 property would not be satisfied if the cell was flat).
 
-When two successive doors are on the same verical line, a straight
+When two successive doors are on the same vertical line, a straight
 line between the center of one door and the center of the other is
 bound to be unsafe, because it will touch the lowest bound of the
 highest of the two doors, and this lowest bound is the extremity of
@@ -273,13 +270,13 @@ some obstacle.  To avoid this, we build a path composed of two
 segments.  The first segment goes from the middle of the first door to
 the center of the cell.  The second segment goes from the center of
 the cell to the middle of the second door.  Such a two segment path is
-safe because the two exremities are safe, and the interior of these
+safe because the two extremities are safe, and the interior of these
 paths lie inside the interior of the cell, which is safe.
 
 Examples of safe paths between doors are given in the following
 picture:
 \begin{center}
-\includegraphics[,trim={0 0 0 10cm}, clip, width=0.3\textwidth]{spiral_safe3.pdf}
+\includegraphics[,trim={0 0 0 8cm}, clip, width=0.3\textwidth]{spiral_safe3.pdf}
 \end{center}
 
 
@@ -307,13 +304,13 @@ weight \(t\), \(E\) is the barycenter of \(B\) with weight \(1 - t\)
 and \(C\) with weight \(t\), and \(F\) is the barycenter of \(D\) with
 weight \(1-t\) and \(E\) with weight \(t\).  The point \(F\) is the
 point on the Bézier curve for the parameter \(t\).  When \(t\) varies
-between \(0\) and \(1\), the point moves on the Béier curve from \(A\)
+between \(0\) and \(1\), the point moves on the Bézier curve from \(A\)
 to \(C\), generally without passing through \(B\).  The curve that one
 obtains is tangent to the segment \((A,B)\) in \(A\) and tangent to
 the segment \((B,C)\) in \(C\).
 
 \begin{center}
-\includegraphics[,trim={0 5cm 0 17cm}, clip, width=0.3\textwidth]{bezier_example3.pdf}
+\includegraphics[,trim={0 5cm 0 16cm}, clip, width=0.3\textwidth]{bezier_example3.pdf}
 \end{center}
 
 
@@ -325,13 +322,16 @@ one hand and \(M\) \(C\) \(D\) on the other hand.  These two curves
 are smooth in their inside, and they connect in \(M\) in such a way
 that their tangent is aligned with the segment \((B, C)\), and in the
 same direction.
+\begin{center}
+\includegraphics[,trim={0 5cm 0 16cm}, clip, width=0.3\textwidth]{small_bline.pdf}
+\includegraphics[,trim={0 5cm 0 16cm}, clip, width=0.3\textwidth]{small_curve.pdf}
+\end{center}
 
-Our Bezier curve construction starts with a broken line that is safe,
+Our Bézier curve construction starts with a broken line that is safe,
 but the curves stray away from the corners, and in doing so they may
-collide with the obstacles.  We need two more algorithms, one to prove
+collide with the obstacles.  We designed two more algorithms, one to prove
 that a Bézier curve stays in safe territory, and the other to repair
-trajectories whose Bézier curve do collide with the obstacles.  We
-designed two such algorithms.
+trajectories whose Bézier curve do collide with the obstacles.
 
 These algorithms are based on a strong property of Bézier curves,
 which we shall call the dichotomy property.  In the description above
@@ -344,16 +344,16 @@ t\), while \(F\) \(E\) \(C\) covers all the points of \(A\) \(B\)
 \(C\) for a parameter \(t'\geq t\).  The convex hull for \(A\) \(D\)
 \(F\) is much smaller than the convex hull for \(A\) \(B\) \(C\), and
 thus the dichotomy operation makes it possible to replace a gross
-approximation of the Bezier curve by a more precise one.  Our checking
+approximation of the Bézier curve by a more precise one.  Our checking
 algorithm repeats this dichotomy operation until it gets enough
-information to conclude that there is a guarantee that the Bezier curve
+information to conclude that there is a guarantee that the Bézier curve
 is included in the union of the interior of two cells and the door
-between these cells, or that there is a gurantee that the Bézier curve
+between these cells, or that there is a guarantee that the Bézier curve
 steps out of this union, in which case we have proved that the Bézier
 curve is unsafe.
 
 When we have an unsafe Bézier curve, we can repair the situation by
-replacing the Bezier curve \(A\) \(B\) \(C\) by the composite path
+replacing the Bézier curve \(A\) \(B\) \(C\) by the composite path
 obtained by adding two new points \(M\) and \(N\) which are the
 centers of \((A,B)\) and \((B,C)\) respectively, and taking the
 segment \((A,M)\), the Bézier curve \(M\) \(B\) \(N\), and finally the
@@ -361,32 +361,117 @@ segment \((N, C)\).  This composite path is smooth, because the
 junctions at \(M\) and \(N\) have the same tangent and direction, and
 it is also closer to the initial broken line trajectory.  There is no
 guarantee that this new path is safe, so it needs to be checked again,
-and if need be the replacement process can be repeeted.  Ultimately,
+and if need be the replacement process can be repeated.  Ultimately,
 if the replacement process were repeated indefinitely the limit of the
 smooth path would the broken line path.
 
-In our program, we first produce a candidate Bezier curve for each
+The following figure illustrates the case where the faulty Bézier
+curve drawn as a dotted line is repaired into the path composed of two
+straight line segments and a smaller Bézier curve.  The vertical
+dashed line represents a door and the solid straight line below
+represents an obstacle.
+
+\begin{center}
+\includegraphics[,trim={0 5cm 0 16cm}, clip, width=0.3\textwidth]{repair.pdf}
+\end{center}
+
+In our program, we first produce a candidate Bézier curve for each
 corner, and we then check whether this curve is safe.  If not, we
-produce Bezier curves, that are closer to the broken line and
-repeatedly check their safety.  After alimited number of iterations,
+produce Bézier curves, that are closer to the broken line and
+repeatedly check their safety.  After a limited number of iterations,
 the program falls back to the initial broken line corner if need be.
 We only wish to prove that the checking procedure is correct.  For
-this program, we will not be able to prove that resulting trajectory
+this program, we will not be able to prove that the resulting trajectory
 is smooth.
 
 Many of the elementary components were developed by collaborators:
 Thomas Portet worked on the vertical cell decomposition algorithm and
-Quentin Vermande worked on the general properties of Bezier curves and
+Quentin Vermande worked on the general properties of Bézier curves and
 collisions with a convex hull.  Some parts of the program also rely on
 finite maps provided by the Coq standard library.
 
 \section{Exploiting the program and visual feedback}
-This program can be run inside Coq, using rational numbers for the numbers system.
-The output can be displayed by simply traversing the output data structure and generating
-simple postscript commands for each of the straight line or Bezier curve segment.  Our
-program uses quadratic Bezier curves, while postscript supports cubic Bezier curves, but
-converting from one to the other is easy.  A Javascript user-interface for this geometric
-program is also under study.
+This program can be run inside Coq, using rational numbers for the
+number system.  To compute vertical cells, most computations are ring
+operations, except when we want to know the vertical projection of a
+point on an edge, where we use a division operation, so the exact
+division operation provided for rational numbers suffices.
+
+When defining Bézier curves, we only need to construct midpoints of
+existing points to define the new control points for the successive
+Bézier curves that we consider, for this working with rational numbers
+suffices to have exact computation.
+
+The output can be displayed by simply traversing the
+output data structure and generating simple postscript commands for
+each of the straight line or Bézier curve segment.  Our program uses
+quadratic Bézier curves, while postscript supports cubic Bézier
+curves, but converting from one to the other is easy.  In the end,
+Postscript uses limited precision numbers so approximations are
+needed, but these approximations are only useful for display purposes.
+
+The Coq system also provides an extraction facility, so the
+algorithmic part of our program can be translated to a conventional
+programming language.  We used this to produce OCaml code, which was
+later translated to Javascript, and we developed a hosting webpage for
+this Javascript code
+\url{https://www-sop.inria.fr/marelle/Lauent.Thery/trajectories/grid.html}
+
+\section{Related work}
+In this section, we mostly concentrate on work that entails formal
+verification.
+
+The computation of sub-areas of the plane is already studied in work
+on convex hulls \cite{PichardieBertot01} and triangulations
+\cite{DufourdBertot10,Bertot18}.  The algorithm we use to decompose
+the workspace into cells relies extensively on the orientation
+predicate taken from the work of Knuth \cite{AxiomAndHulls}.
+
+We argued in this article that the program we designed only uses
+rational computations.  Up to the problem of reasoning about
+collisions between the broken line trajectories and the obstacles,
+rational numbers are sufficient.  However, smooth curves based on
+Bézier curve pose a new problem.  The coordinates of potential
+collision points are real algebraic numbers.  So while the program
+description can rely on rational numbers, the proofs concerning
+collision avoidance require working in a real closed field.  Work on
+the decidability of equality between algebraic numbers is related to
+the work done in CoRN on the fundamental theorem of Algebra
+\cite{GeuversWZ02}.  The Mathematical Components library also contains
+descriptions of procedures to descide problems with polynomials
+\cite{CohenMahboubi11,CohenQERCF}.
+
+Bézier curves can actually be viewed as parametric curves, where the
+polynomials giving each coordinate are easily described from the
+control points using Benstein polynomials as a basis of the vector
+space of polynomials, so this work is also related to previous work on
+Bernstein polynomials \cite{BertotMahboubiGuilhot}.
+
+A piece of work that whose motivation has many similarities with ours
+is an experiment combining a motion planner programmed in Matlab with
+a formal verification performed by Isabelle \cite{RizaldiISA18}.  This
+experiments describes a system that is more powerful than ours, as it
+relies on analysis, especially tools to reasons about solutions to
+differential equations, to check solutions that have been elaborated by a
+Matlab program.  However, our objective is to describe a program that
+is eventually independent from the interactive theorem prover being
+used (in our case Coq, in their case Isabelle).  To our understanding,
+their approach is to have Matlab and Isabelle being used at runtime to
+produce trajectories that are formally verified.  On the other hand,
+our contains a formal verification of the computations that happen at
+the time of elaborating the trajectories, while their work receives
+the results of these computations as if they were provided by an oracle.
+
+\section{Conclusion}
+It is unfortunate that this presentation is more a description of work
+in progress than a statement of achievement.  At the time of writing
+these lines, the formal verification
+is focusing on proving the correctness of the vertical cell
+decomposition algorithm.  The naive solution seems rather easy to
+verify, but the constraint of obtaining cells adds a lot of complexity
+in the program, as we need to pay attention to the case where two
+successive events are vertically aligned.
+
 \end{document}
 
 
