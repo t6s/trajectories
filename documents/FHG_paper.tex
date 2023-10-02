@@ -425,7 +425,7 @@ The computation of sub-areas of the plane is already studied in work
 on convex hulls \cite{PichardieBertot01} and triangulations
 \cite{DufourdBertot10,Bertot18}.  The algorithm we use to decompose
 the workspace into cells relies extensively on the orientation
-predicate taken from the work of Knuth \cite{AxiomAndHulls}.
+predicate taken from the work of Knuth \cite{KnuthAxiomAndHulls}.
 
 We argued in this article that the program we designed only uses
 rational computations.  Up to the problem of reasoning about
@@ -437,9 +437,9 @@ description can rely on rational numbers, the proofs concerning
 collision avoidance require working in a real closed field.  Work on
 the decidability of equality between algebraic numbers is related to
 the work done in CoRN on the fundamental theorem of Algebra
-\cite{GeuversWZ02}.  The Mathematical Components library also contains
+\cite{GeuversWZ00}.  The Mathematical Components library also contains
 descriptions of procedures to descide problems with polynomials
-\cite{CohenMahboubi11,CohenQERCF}.
+\cite{CohenMQERCF}.
 
 Bézier curves can actually be viewed as parametric curves, where the
 polynomials giving each coordinate are easily described from the
@@ -471,6 +471,9 @@ decomposition algorithm.  The naive solution seems rather easy to
 verify, but the constraint of obtaining cells adds a lot of complexity
 in the program, as we need to pay attention to the case where two
 successive events are vertically aligned.
+
+\bibliographystyle{plain}
+\bibliography{FHG_paper}
 
 \end{document}
 
