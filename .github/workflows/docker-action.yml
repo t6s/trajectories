@@ -6,7 +6,10 @@ on:
   push:
     branches:
       - master
+      - 'documents/**'
   pull_request:
+    paths-ignore:
+      - 'documents/'
     branches:
       - '**'
 
