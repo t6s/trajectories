@@ -11,8 +11,9 @@ PDFFILES= $(PSFILES:.ps=.pdf)
 intro_slides.pdf : intro_slides.tex $(PDFFILES)
 	pdflatex intro_slides.tex
 
-FHG_paper.pdf : FHG_paper.tex $(PDFFILES)
-	pdflatex FHG_paper.tex
+FHG_paper.pdf : FHG_paper.tex FHG_paper.bib $(PDFFILES)
+	pdflatex FHG_paper.tex; bibtex FHG_paper; pdflatex FHG_paper.tex \
+        FHG_paper.tex
 
 $(PDFFILES): %.pdf: %.ps
 	ps2pdf $<
