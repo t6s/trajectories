@@ -4,9 +4,10 @@ name: Docker CI
 
 on:
   push:
+    paths-ignore:
+      - 'documents/**'
     branches:
       - master
-      - 'documents/**'
   pull_request:
     paths-ignore:
       - 'documents/**'
