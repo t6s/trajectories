@@ -9,7 +9,7 @@ on:
       - 'documents/**'
   pull_request:
     paths-ignore:
-      - 'documents/'
+      - 'documents/**'
     branches:
       - '**'
 
