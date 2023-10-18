@@ -4,3 +4,5 @@
 *.nav
 *.pdf
 *.log
+*.bbl
+*.blg
