@@ -415,7 +415,7 @@ algorithmic part of our program can be translated to a conventional
 programming language.  We used this to produce OCaml code, which was
 later translated to Javascript, and we developed a hosting webpage for
 this Javascript code
-\url{https://www-sop.inria.fr/marelle/Lauent.Thery/trajectories/grid.html}
+\url{https://www-sop.inria.fr/marelle/Laurent.Thery/trajectories/grid.html}
 
 \section{Related work}
 In this section, we mostly concentrate on work that entails formal
@@ -425,7 +425,7 @@ The computation of sub-areas of the plane is already studied in work
 on convex hulls \cite{PichardieBertot01} and triangulations
 \cite{DufourdBertot10,Bertot18}.  The algorithm we use to decompose
 the workspace into cells relies extensively on the orientation
-predicate taken from the work of Knuth \cite{KnuthAxiomAndHulls}.
+predicate taken from the work of Knuth \cite{KnuthAxiomsAndHulls}.
 
 We argued in this article that the program we designed only uses
 rational computations.  Up to the problem of reasoning about
@@ -472,6 +472,13 @@ verify, but the constraint of obtaining cells adds a lot of complexity
 in the program, as we need to pay attention to the case where two
 successive events are vertically aligned.
 
+\section*{Acknowledgements}
+The initial work on the vertical cell decomposition algorithms was
+done by Thomas Portet.  Studies of potential collisions between Bézier
+curves and straight line segments were done by Quentin Vermande.
+Laurent Théry added the possibility to visualize the results on a
+web-page.
+x
 \bibliographystyle{plain}
 \bibliography{FHG_paper}
 
