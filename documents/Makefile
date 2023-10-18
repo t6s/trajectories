@@ -4,7 +4,8 @@ PSFILES=bezier_example.ps bezier_example2.ps cells_spiral.ps \
   collision.ps collision2.ps empty_spiral.ps polygon.ps repair2.ps \
   repair.ps smooth_spiral.ps smooth_spiral2.ps spiral_bline.ps spiral_safe2.ps\
   partial_spiral.ps partial_spiral2.ps smooth_spiral_bare.ps cells_spiral2.ps\
-  spiral_safe3.ps bezier_example3.ps small_bline.ps small_curve.ps
+  spiral_safe3.ps bezier_example3.ps small_bline.ps small_curve.ps\
+  sorting_input.ps safe_straight_path.ps broken_safe_path.ps smooth_connect.ps
 
 PDFFILES= $(PSFILES:.ps=.pdf)
 
