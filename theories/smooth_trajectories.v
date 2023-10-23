@@ -1,5 +1,8 @@
-From mathcomp Require all_ssreflect.
+From mathcomp Require Import all_ssreflect.
 Require Import ZArith QArith List String OrderedType OrderedTypeEx FMapAVL.
+
+Notation head := seq.head.
+Notation sort := path.sort.
 
 (* I did not have the courage to understand how to use CoqEAL
   this first version uses only vanilla Coq data structures.  It could still
@@ -103,16 +106,18 @@ Fixpoint edges_to_events (s : seq edge) : seq event :=
 
 (* this function removes consecutives duplicates, meaning the seq needs
  to be sorted first if we want to remove all duplicates *)
-Fixpoint no_dup_seq [A : Type] (eqb : A -> A -> bool) (s : seq A) : (seq A) :=
+Fixpoint no_dup_seq_aux [A : Type] (eqb : A -> A -> bool) (s : seq A) : (seq A) :=
   match s with
   | nil => nil
   | a::q =>
     match q with
     | nil => s
     | b::r =>
-      if eqb a b then no_dup_seq eqb q else a::(no_dup_seq eqb q)
+      if eqb a b then no_dup_seq_aux eqb q else a::(no_dup_seq_aux eqb q)
     end
   end.
+
+Notation no_dup_seq := (no_dup_seq_aux pt_eqb).
 
 Definition valid_edge e p := (Qle_bool (p_x (left_pt e)) (p_x p)) &&
 (Qle_bool (p_x p) (p_x (right_pt e))).
@@ -128,50 +133,32 @@ Definition close_cell (p : pt) (c : cell) :=
         vertical_intersection_point p (high c) with
   | None, _ | _, None => c
   | Some p1, Some p2 => 
-    Bcell (left_pts c) (no_dup_seq pt_eqb (p1 :: p :: p2 :: nil)) (low c) (high c)
+    Bcell (left_pts c) (no_dup_seq (p1 :: p :: p2 :: nil)) (low c) (high c)
   end.
 
 Definition closing_cells (p : pt) (contact_cells: seq cell) : seq cell :=
   List.map (fun c => close_cell p c) contact_cells.
 
 Fixpoint opening_cells_aux (p : pt) (out : seq edge) (low_e high_e : edge) 
-  (leftpts : option (seq pt)) : seq cell * cell :=
-      match out with
-    | nil =>
-      match leftpts with
-      | None =>
-          let op0 := vertical_intersection_point p low_e in
-              let op1 := vertical_intersection_point p high_e in
-                      match (op0,op1) with
-                          |(None,_) |(_,None)=> (nil, dummy_cell)
-                          |(Some(p0),Some(p1)) =>
-                              (nil , 
-                              Bcell  (no_dup_seq pt_eqb (p1 :: p :: p0 :: nil)) nil low_e high_e)
-                      end
-      | Some lpts =>
-        let op1 := vertical_intersection_point p high_e in
-          match op1 with
-          | Some p1 =>
-            (nil, Bcell (no_dup_seq pt_eqb (p1 :: (seq.behead lpts))) nil low_e high_e)
-          | None => (nil, dummy_cell)
-          end
-      end
-    | c::q =>
-      match leftpts with
-      | None =>
-        let op0 := vertical_intersection_point p low_e in
-              let (s, nc) := opening_cells_aux p q c high_e None in
-                    match op0 with
-                       | None => (nil, dummy_cell)
-                       | Some(p0) =>
-                        (Bcell  (no_dup_seq pt_eqb (p :: p0 :: nil)) nil low_e c :: s,
-                         nc)
-                    end
-      | Some lpts =>
-        let (s, nc) := opening_cells_aux p q c high_e None in
-          (Bcell (no_dup_seq pt_eqb (p :: (seq.behead lpts))) nil low_e c :: s, nc)
-      end
-end.
+  : seq cell * cell :=
+  match out with
+  | [::] =>
+    let op0 := vertical_intersection_point p low_e in
+    let op1 := vertical_intersection_point p high_e in
+    match (op0,op1) with
+    | (None,_) |(_,None) => ([::], dummy_cell)
+    | (Some p0,Some p1) =>
+      ([::] , Bcell  (no_dup_seq ([:: p1; p; p0])) [::] low_e high_e)
+    end
+  | c::q =>
+    let op0 := vertical_intersection_point p low_e in
+    let (s, nc) := opening_cells_aux p q c high_e in
+    match op0 with
+    | None => ([::], dummy_cell)
+    | Some p0 =>
+      (Bcell  (no_dup_seq [:: p; p0]) [::] low_e c :: s, nc)
+    end
+  end.
 
 Definition pue_formula (p : pt) (a : pt) (b : pt) : Q :=
   let: Bpt p_x p_y := p in
@@ -182,8 +169,14 @@ Definition pue_formula (p : pt) (a : pt) (b : pt) : Q :=
 Definition point_under_edge (p : pt) (e : edge) : bool :=
   Qle_bool (pue_formula p (left_pt e) (right_pt e)) 0.
 
+Notation "p >>> g" := (negb (point_under_edge p g))
+  (at level 70, no associativity).
+
 Definition point_strictly_under_edge (p : pt) (e : edge) : bool :=
   Qlt_bool (pue_formula p (left_pt e) (right_pt e)) 0.
+
+Notation "p <<< g" := (point_strictly_under_edge p g)
+  (at level 70, no associativity).
 
 Definition edge_below (e1 : edge) (e2 : edge) : bool :=
 (point_under_edge (left_pt e1) e2 && 
@@ -244,17 +237,11 @@ Definition update_closed_cell (c : cell) (p : pt) : cell :=
     (p :: seq.last dummy_pt ptseq :: nil) in
   Bcell (left_pts c) newptseq (low c) (high c).
 
-Definition update_open_cell (c : cell) (e : event) : seq cell * cell :=
-  match outgoing e with
-  | nil =>
-     let ptseq := left_pts c in
-     let newptseq :=
-       (seq.head dummy_pt ptseq :: point e :: seq.behead ptseq) in
-     (nil, Bcell newptseq (right_pts c) (low c) (high c))
-  | _ =>
-    opening_cells_aux (point e) (path.sort edge_below (outgoing e))
-        (low c) (high c) (Some (left_pts c))
-  end.
+Definition set_left_pts (c : cell) (l : seq pt) :=
+  {| left_pts := l; right_pts := right_pts c; low := low c; high := high c |}.
+
+Definition set_pts (c : cell) (l1 l2 : seq pt) :=
+  {| left_pts := l1; right_pts := l2; low := low c; high := high c |}.
 
 Definition pvert_y (p : pt) (e : edge) :=
   match vertical_intersection_point p e with
@@ -262,35 +249,66 @@ Definition pvert_y (p : pt) (e : edge) :=
   | None => 0
   end.
 
+(* This function is to be called only when the event is in the middle
+  of the last opened cell.  The point e needs to be added to the left
+  points of one of the newly created open cells, but the one that receives
+  the first segment of the last opening cells should keep its existing
+  left points.*)
+Definition update_open_cell (c : cell) (e : event) : seq cell * cell :=
+  let ps := left_pts c in
+  if outgoing e is nil then
+    ([::], set_left_pts c [:: head dummy_pt ps, point e & behead ps])
+  else
+    match
+    opening_cells_aux (point e) (sort edge_below (outgoing e))
+        (low c) (high c) with
+    | ([::], c') => (* this is an absurd case. *)
+      ([::], c)
+    | (c'::tlc', lc') =>
+      (set_left_pts c' (point e :: behead ps) :: tlc', lc')
+    end.
+
 Definition update_open_cell_top (c : cell) (new_high : edge) (e : event) :=
-  match outgoing e with
-  | nil =>
+  if outgoing e is nil then
     let newptseq :=
-      (Bpt (p_x (point e)) (pvert_y (point e) new_high) ::
-          left_pts c) in
-      (nil, Bcell newptseq (right_pts c) (low c) new_high)
-  | _ => 
-    opening_cells_aux (point e) (path.sort edge_below (outgoing e))
-        (low c) new_high (Some (left_pts c))
-  end.
+(* when function is called, (point e) should alread be in the left points. *)
+      [:: Bpt (p_x (point e)) (pvert_y (point e) new_high) &
+          left_pts c] in
+      ([::], Bcell newptseq (right_pts c) (low c) new_high)
+  else
+    match opening_cells_aux (point e) (sort edge_below (outgoing e))
+        (low c) new_high with
+    | ([::], lc) => (* this is not supposed to happen *) ([::], lc)
+    | (f :: q, lc) =>
+      (set_left_pts f (point e :: behead (left_pts c)) :: q, lc)
+    end.
+
+Declare Scope local_scope.
+Notation "x != y" := (negb (Qeq_bool x y)) : local_scope.
+Open Scope local_scope.
+
+Locate "!=".
+
+Definition same_x (p : pt) (v : Q) :=
+  Qeq_bool (p_x p) v.
 
 Definition step (e : event) (st : scan_state) : scan_state :=
    let p := point e in
    let '(Bscan op1 lsto op2 cls cl lhigh lx) := st in
-   if negb (Qeq_bool (p_x p) lx) then
+   if negb (same_x p lx) then
      let '(first_cells, contact_cells, last_contact, last_cells, 
            lower_edge, higher_edge) :=
        open_cells_decomposition (op1 ++ lsto :: op2) p in
      let closed := closing_cells p contact_cells in
      let last_closed := close_cell p last_contact in
-     let closed_cells := closed ++ cl :: cls in
+     let closed_cells := cls ++ cl :: closed in
      let (new_open_cells, newlastopen) :=
-       opening_cells_aux p (path.sort edge_below (outgoing e))
-            lower_edge higher_edge None in
+       opening_cells_aux p (sort edge_below (outgoing e))
+            lower_edge higher_edge in
      Bscan (first_cells ++ new_open_cells)
            newlastopen last_cells closed_cells 
            last_closed  higher_edge (p_x (point e))
-   else if negb (point_under_edge p lhigh) then
+   else if p >>> lhigh then
      let '(fc', contact_cells, last_contact, last_cells,
            low_edge, higher_edge) :=
        open_cells_decomposition op2 p in
@@ -298,14 +316,14 @@ Definition step (e : event) (st : scan_state) : scan_state :=
 (* TODO code duplication (6 lines above) *)
      let closed := closing_cells p contact_cells in
      let last_closed := close_cell p last_contact in
-     let closed_cells := closed ++ cls in
+     let closed_cells := cls++ cl :: closed in
      let (new_open_cells, newlastopen) :=
-       opening_cells_aux p (path.sort edge_below (outgoing e))
-            low_edge higher_edge None in
+       opening_cells_aux p (sort edge_below (outgoing e))
+            low_edge higher_edge in
      Bscan (first_cells ++ new_open_cells)
            newlastopen last_cells closed_cells last_closed
             higher_edge (p_x (point e))
-   else if point_strictly_under_edge p lhigh then 
+   else if p <<< lhigh then 
      let new_closed := update_closed_cell cl (point e) in
      let (new_opens, new_lopen) := update_open_cell lsto e in
      Bscan (op1 ++ new_opens) new_lopen op2 cls new_closed lhigh lx
@@ -313,6 +331,12 @@ Definition step (e : event) (st : scan_state) : scan_state :=
      let '(fc', contact_cells, last_contact, last_cells, lower_edge,
                 higher_edge) :=
        open_cells_decomposition (lsto :: op2) p in
+       (* we know lsto was just open, so that its left limit is lx
+         and its right limit is bounded by p_x (right_pt lhigh), which
+         is necessarily p_x (point e). lsto is necessarily the
+         first cell of contact_cells.  So the first element of
+         contact_cells should not be closed. It can just be
+         disregarded. *)
      let closed := closing_cells p (seq.behead contact_cells) in
      let last_closed := close_cell p last_contact in
      let (new_opens, new_lopen) := update_open_cell_top lsto higher_edge e in
@@ -321,15 +345,15 @@ Definition step (e : event) (st : scan_state) : scan_state :=
 
 Definition leftmost_points (bottom top : edge) :=
   if Qlt_bool (p_x (left_pt bottom)) (p_x (left_pt top)) then
-    match vertical_intersection_point (left_pt top) bottom with
-    | Some pt => left_pt top :: pt :: nil
-    | None => nil
-    end
+    if vertical_intersection_point (left_pt top) bottom is Some pt then
+       [:: left_pt top; pt]
+    else
+        [::]
   else
-    match vertical_intersection_point (left_pt bottom) top with
-    | Some pt => pt :: left_pt bottom :: nil
-    | _ => nil
-    end.
+     if vertical_intersection_point (left_pt bottom) top is Some pt then
+        [:: pt; left_pt bottom]
+     else
+        [::].
 
 Definition rightmost_points (bottom top : edge) :=
   if Qlt_bool (p_x (right_pt bottom)) (p_x (right_pt top)) then
@@ -342,6 +366,7 @@ Definition rightmost_points (bottom top : edge) :=
     | Some pt => pt :: right_pt top :: nil
     | _ => nil
     end.
+
 
 Definition complete_last_open (bottom top : edge) (c : cell) :=
   match c with
@@ -356,7 +381,7 @@ Definition start (first_event : event) (bottom : edge) (top : edge) :
   scan_state :=
   let (newcells, lastopen) :=
   opening_cells_aux (point first_event)
-      (path.sort edge_below (outgoing first_event)) bottom top None in
+      (path.sort edge_below (outgoing first_event)) bottom top in
       (Bscan newcells lastopen nil nil
          (close_cell (point first_event) (start_open_cell bottom top))
          top (p_x (point first_event))).
