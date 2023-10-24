@@ -3,6 +3,7 @@ Require Import ZArith QArith List String OrderedType OrderedTypeEx FMapAVL.
 
 Notation head := seq.head.
 Notation sort := path.sort.
+Notation R := Q.
 
 (* I did not have the courage to understand how to use CoqEAL
   this first version uses only vanilla Coq data structures.  It could still
@@ -36,6 +37,9 @@ Record pt := Bpt {p_x : Q; p_y : Q}.
   the left point has a first coordinate strictly less than the right point. *)
 Record edge :=
  Bedge { left_pt : pt; right_pt : pt}.
+
+Definition same_x (p : pt) (v : Q) :=
+  Qeq_bool (p_x p) v.
 
 Record event :=
   Bevent {point : pt; outgoing : seq edge}.
@@ -128,38 +132,6 @@ Definition vertical_intersection_point (p : pt) (e : edge) : option pt :=
     ((p_x (right_pt e)) - p_x (left_pt e))) + p_y (left_pt e)))
     else None.
 
-Definition close_cell (p : pt) (c : cell) :=
-  match vertical_intersection_point p (low c),
-        vertical_intersection_point p (high c) with
-  | None, _ | _, None => c
-  | Some p1, Some p2 => 
-    Bcell (left_pts c) (no_dup_seq (p1 :: p :: p2 :: nil)) (low c) (high c)
-  end.
-
-Definition closing_cells (p : pt) (contact_cells: seq cell) : seq cell :=
-  List.map (fun c => close_cell p c) contact_cells.
-
-Fixpoint opening_cells_aux (p : pt) (out : seq edge) (low_e high_e : edge) 
-  : seq cell * cell :=
-  match out with
-  | [::] =>
-    let op0 := vertical_intersection_point p low_e in
-    let op1 := vertical_intersection_point p high_e in
-    match (op0,op1) with
-    | (None,_) |(_,None) => ([::], dummy_cell)
-    | (Some p0,Some p1) =>
-      ([::] , Bcell  (no_dup_seq ([:: p1; p; p0])) [::] low_e high_e)
-    end
-  | c::q =>
-    let op0 := vertical_intersection_point p low_e in
-    let (s, nc) := opening_cells_aux p q c high_e in
-    match op0 with
-    | None => ([::], dummy_cell)
-    | Some p0 =>
-      (Bcell  (no_dup_seq [:: p; p0]) [::] low_e c :: s, nc)
-    end
-  end.
-
 Definition pue_formula (p : pt) (a : pt) (b : pt) : Q :=
   let: Bpt p_x p_y := p in
   let: Bpt a_x a_y := a in
@@ -175,6 +147,9 @@ Notation "p >>> g" := (negb (point_under_edge p g))
 Definition point_strictly_under_edge (p : pt) (e : edge) : bool :=
   Qlt_bool (pue_formula p (left_pt e) (right_pt e)) 0.
 
+Notation "x [<] y" := (Qlt_bool x y) (at level 70, no associativity,
+  only parsing).
+
 Notation "p <<< g" := (point_strictly_under_edge p g)
   (at level 70, no associativity).
 
@@ -187,39 +162,75 @@ Definition edge_below (e1 : edge) (e2 : edge) : bool :=
 Definition contains_point (p : pt) (c : cell)  : bool :=
    negb (point_strictly_under_edge p (low c)) && point_under_edge p (high c).
 
+Definition close_cell (p : pt) (c : cell) :=
+  match vertical_intersection_point p (low c),
+        vertical_intersection_point p (high c) with
+  | None, _ | _, None => c
+  | Some p1, Some p2 => 
+    Bcell (left_pts c) (no_dup_seq (p1 :: p :: p2 :: nil)) (low c) (high c)
+  end.
+
+Definition closing_cells (p : pt) (contact_cells: seq cell) : seq cell :=
+  List.map (fun c => close_cell p c) contact_cells.
+
+Definition pvert_y (p : pt) (e : edge) :=
+  match vertical_intersection_point p e with
+    Some p' => p_y p'
+  | None => 0
+  end.
+
+Fixpoint opening_cells_aux (p : pt) (out : seq edge) (low_e high_e : edge) 
+  : seq cell * cell :=
+  match out with
+  | [::] =>
+    let op0 := vertical_intersection_point p low_e in
+    let op1 := vertical_intersection_point p high_e in
+    match (op0,op1) with
+    | (None,_) | (_,None) => ([::], dummy_cell)
+    | (Some p0,Some p1) =>
+      ([::] , Bcell  (no_dup_seq ([:: p1; p; p0])) [::] low_e high_e)
+    end
+  | c::q =>
+    let op0 := vertical_intersection_point p low_e in
+    let (s, nc) := opening_cells_aux p q c high_e in
+    match op0 with
+    | None => ([::], dummy_cell)
+    | Some p0 =>
+      (Bcell  (no_dup_seq [:: p; p0]) [::] low_e c :: s, nc)
+    end
+  end.
+
 Fixpoint open_cells_decomposition_contact open_cells pt :
    option (seq cell * seq cell * cell) :=
-match open_cells with
-| c :: q => 
+if open_cells is c :: q then
   if contains_point pt c then
-    match open_cells_decomposition_contact q pt with
-    | Some(cc, lc, c') => Some(c :: cc, lc, c')
-    | None => Some(nil, q, c)
-    end
+    if open_cells_decomposition_contact q pt is Some(cc, lc, c') then
+      Some(c :: cc, lc, c')
+    else
+      Some([::], q, c)
   else
     None
-| nil => None
-end.
+else
+  None.
 
 Fixpoint open_cells_decomposition_rec open_cells pt : 
   seq cell * seq cell * cell * seq cell :=
-match open_cells with
-| c :: q =>
+if open_cells is c :: q then
   if contains_point pt c then
-     match open_cells_decomposition_contact q pt with
-     | Some(cc, lc, c') => (nil, c :: cc, c', lc)
-     | None => (nil, nil, c, q)
-     end
+    if open_cells_decomposition_contact q pt is Some(cc, lc, c') then
+      ([::], c :: cc, c', lc)
+    else
+      ([::], [::], c, q)
   else
     let '(fc, cc, c', lc) := open_cells_decomposition_rec q pt in
     (c :: fc, cc, c', lc)
-| nil => (nil, nil, dummy_cell, nil)
-end.
+else
+  ([::], [::], dummy_cell, [::]).
 
 Definition open_cells_decomposition (open_cells : seq cell) (p : pt) :
    seq cell * seq cell * cell * seq cell * edge * edge :=
 let '(fc, cc, c', lc) := open_cells_decomposition_rec open_cells p in
-(fc, cc, c', lc, low (seq.head c' cc), high c').
+(fc, cc, c', lc, low (head c' cc), high c').
 
 Record scan_state :=
   Bscan {sc_open1 : seq cell;
@@ -228,13 +239,13 @@ Record scan_state :=
          sc_closed : seq cell;
          lst_closed : cell;
          lst_high : edge;
-         lst_x : Q}.
+         lst_x : R}.
 
 Definition update_closed_cell (c : cell) (p : pt) : cell :=
   let ptseq := right_pts c in
   let newptseq :=
-    (seq.belast  (seq.head dummy_pt ptseq) (seq.behead ptseq)) ++
-    (p :: seq.last dummy_pt ptseq :: nil) in
+    (belast (head dummy_pt ptseq) (behead ptseq)) ++
+    [:: p; seq.last dummy_pt ptseq] in
   Bcell (left_pts c) newptseq (low c) (high c).
 
 Definition set_left_pts (c : cell) (l : seq pt) :=
@@ -243,12 +254,6 @@ Definition set_left_pts (c : cell) (l : seq pt) :=
 Definition set_pts (c : cell) (l1 l2 : seq pt) :=
   {| left_pts := l1; right_pts := l2; low := low c; high := high c |}.
 
-Definition pvert_y (p : pt) (e : edge) :=
-  match vertical_intersection_point p e with
-    Some p' => p_y p'
-  | None => 0
-  end.
-
 (* This function is to be called only when the event is in the middle
   of the last opened cell.  The point e needs to be added to the left
   points of one of the newly created open cells, but the one that receives
@@ -256,7 +261,7 @@ Definition pvert_y (p : pt) (e : edge) :=
   left points.*)
 Definition update_open_cell (c : cell) (e : event) : seq cell * cell :=
   let ps := left_pts c in
-  if outgoing e is nil then
+  if outgoing e is [::] then
     ([::], set_left_pts c [:: head dummy_pt ps, point e & behead ps])
   else
     match
@@ -269,7 +274,7 @@ Definition update_open_cell (c : cell) (e : event) : seq cell * cell :=
     end.
 
 Definition update_open_cell_top (c : cell) (new_high : edge) (e : event) :=
-  if outgoing e is nil then
+  if outgoing e is [::] then
     let newptseq :=
 (* when function is called, (point e) should alread be in the left points. *)
       [:: Bpt (p_x (point e)) (pvert_y (point e) new_high) &
@@ -282,15 +287,6 @@ Definition update_open_cell_top (c : cell) (new_high : edge) (e : event) :=
     | (f :: q, lc) =>
       (set_left_pts f (point e :: behead (left_pts c)) :: q, lc)
     end.
-
-Declare Scope local_scope.
-Notation "x != y" := (negb (Qeq_bool x y)) : local_scope.
-Open Scope local_scope.
-
-Locate "!=".
-
-Definition same_x (p : pt) (v : Q) :=
-  Qeq_bool (p_x p) v.
 
 Definition step (e : event) (st : scan_state) : scan_state :=
    let p := point e in
@@ -337,14 +333,14 @@ Definition step (e : event) (st : scan_state) : scan_state :=
          first cell of contact_cells.  So the first element of
          contact_cells should not be closed. It can just be
          disregarded. *)
-     let closed := closing_cells p (seq.behead contact_cells) in
+     let closed := closing_cells p (behead contact_cells) in
      let last_closed := close_cell p last_contact in
      let (new_opens, new_lopen) := update_open_cell_top lsto higher_edge e in
      Bscan (op1 ++ fc' ++ new_opens) new_lopen last_cells
           (closed ++ cl :: cls) last_closed higher_edge lx.
 
 Definition leftmost_points (bottom top : edge) :=
-  if Qlt_bool (p_x (left_pt bottom)) (p_x (left_pt top)) then
+  if p_x (left_pt bottom) [<] p_x (left_pt top) then
     if vertical_intersection_point (left_pt top) bottom is Some pt then
        [:: left_pt top; pt]
     else
@@ -356,17 +352,16 @@ Definition leftmost_points (bottom top : edge) :=
         [::].
 
 Definition rightmost_points (bottom top : edge) :=
-  if Qlt_bool (p_x (right_pt bottom)) (p_x (right_pt top)) then
-    match vertical_intersection_point (right_pt bottom) top with
-    | Some pt => right_pt bottom :: pt :: nil
-    | _ => nil
-    end
+  if p_x (right_pt bottom) [<] p_x (right_pt top) then
+    if vertical_intersection_point (right_pt bottom) top is Some pt then
+       [:: right_pt bottom; pt]
+    else
+        [::]
   else
-    match vertical_intersection_point (right_pt top) bottom with
-    | Some pt => pt :: right_pt top :: nil
-    | _ => nil
-    end.
-
+    if vertical_intersection_point (right_pt top) bottom is Some pt then
+       [:: pt; right_pt top]
+    else
+       [::].
 
 Definition complete_last_open (bottom top : edge) (c : cell) :=
   match c with
@@ -375,14 +370,14 @@ Definition complete_last_open (bottom top : edge) (c : cell) :=
   end.
 
 Definition start_open_cell (bottom top : edge) :=
-  Bcell (leftmost_points bottom top) nil bottom top.
+  Bcell (leftmost_points bottom top) [::] bottom top.
 
 Definition start (first_event : event) (bottom : edge) (top : edge) :
   scan_state :=
   let (newcells, lastopen) :=
   opening_cells_aux (point first_event)
       (path.sort edge_below (outgoing first_event)) bottom top in
-      (Bscan newcells lastopen nil nil
+      (Bscan newcells lastopen [::] [::]
          (close_cell (point first_event) (start_open_cell bottom top))
          top (p_x (point first_event))).
 
@@ -391,13 +386,13 @@ Definition start (first_event : event) (bottom : edge) (top : edge) :
   generic function. *)
 Fixpoint iter_list [A B : Type] (f : A -> B -> B) (s : seq A) (init : B) :=
   match s with
-  | nil => init
+  | [::] => init
   | a :: tl => iter_list f tl (f a init)
   end.
 
 Definition scan (events : seq event) (bottom top : edge) : seq cell :=
   match events with
-  | nil => (complete_last_open bottom top (start_open_cell bottom top) :: nil)
+  | [::] => [:: complete_last_open bottom top (start_open_cell bottom top)]
   | ev0 :: events =>
     let start_scan := start ev0 bottom top in
     let final_scan := iter_list step events start_scan in
@@ -512,12 +507,12 @@ end.
 
 (* Vertical edges are collected from the left_pts and right_pts sequences. *)
 Definition cell_safe_exits_left (c : cell) : seq vert_edge :=
-  let lx := p_x (seq.head dummy_pt (left_pts c)) in
+  let lx := p_x (head dummy_pt (left_pts c)) in
   map (fun p => Build_vert_edge lx (p_y (fst p)) (p_y (snd p))) 
    (seq_to_intervals (left_pts c)).
 
 Definition cell_safe_exits_right (c : cell) : seq vert_edge :=
-  let lx := p_x (seq.head dummy_pt (right_pts c)) in
+  let lx := p_x (head dummy_pt (right_pts c)) in
   map (fun p => Build_vert_edge lx (p_y (fst p)) (p_y (snd p))) 
    (seq_to_intervals (rev (right_pts c))).
 
@@ -592,7 +587,7 @@ Definition cell_path (cells : seq cell) (source_i target_i : nat) :
   dummy_vert_edge is returned.  Maybe this should be made safer by returning
   an option type. *)
 Definition lr_door (c1 c2 : cell) : vert_edge :=
-  seq.head dummy_vert_edge
+  head dummy_vert_edge
      (filter (fun x => existsb (fun x' => vert_edge_eqb x x')
                   (cell_safe_exits_left c2)) (cell_safe_exits_right c1)).
 
@@ -619,8 +614,8 @@ Definition midpoint (p1 p2 : pt) : pt :=
 Definition cell_center (c : cell) :=
   midpoint
     (midpoint (seq.last dummy_pt (left_pts c)) 
-              (seq.head dummy_pt (right_pts c)))
-    (midpoint (seq.head dummy_pt (left_pts c))
+              (head dummy_pt (right_pts c)))
+    (midpoint (head dummy_pt (left_pts c))
               (seq.last dummy_pt (right_pts c))).
 
 Record annotated_point :=
@@ -744,7 +739,7 @@ Definition find_origin_cells (cells : seq cell) (p : pt) : seq nat :=
          (seq.iota 0 (List.length cells)) with
   | Some n => n :: nil
   | None =>
-    seq.head nil
+    head nil
     (List.map (fun av => snd av ::
                 match door_right_cell cells (fst av) with
                 | Some rc => rc :: nil
@@ -766,15 +761,15 @@ if Nat.ltb 0 (List.length source_is) && Nat.ltb 0 (List.length target_is) then
   if Nat.ltb 0 (List.length (intersection source_is target_is)) then
     Some ((Apt source source_is, Apt target target_is) :: nil)
   else
-    let ocp := cell_path cells (seq.head 0%nat source_is) (seq.head 0%nat target_is) in
+    let ocp := cell_path cells (head 0%nat source_is) (head 0%nat target_is) in
     match ocp with
     Some cp =>
-      (* The first element of the path is (seq.head 0 source_is), *)
+      (* The first element of the path is (head 0 source_is), *)
       if 2 <=? List.length cp then
       (* looking
          at a length larger than 2 actually means the path has at least 3 fenceposts
          and at least 2 intervals:
-         seq.head source_is (nth 0 cp 0)  (nth 1 cp 0)
+         head source_is (nth 0 cp 0)  (nth 1 cp 0)
          so there are (at least) 2 doors. *)
         if existsb (Nat.eqb (nth 0 cp 0%nat)) source_is then
         (* It can only be the case that the source is on a door, and
@@ -786,23 +781,23 @@ if Nat.ltb 0 (List.length source_is) && Nat.ltb 0 (List.length target_is) then
          of the path, so the length of cp is strictly larger than 2 *)
            if existsb (Nat.eqb (nth (List.length cp - 2) cp 0%nat)) target_is then
              (* Here target_is is in the penultimate cell of the path *)
-             Some (door_to_door cells (seq.head 0%nat source_is) (nth 0 cp 0%nat)
+             Some (door_to_door cells (head 0%nat source_is) (nth 0 cp 0%nat)
                  (Some source) (Some target) (seq.behead cp (* (seq.behead cp) *)))
            else
-             Some (door_to_door cells (seq.head 0%nat source_is) (nth 0 cp 0%nat) (Some source) None
+             Some (door_to_door cells (head 0%nat source_is) (nth 0 cp 0%nat) (Some source) None
                  (seq.behead cp) ++
                  path_reverse (point_to_door cells (Apt target target_is)
                     (nth (List.length cp - 1) cp 0%nat)
                     (nth (List.length cp - 2) cp 0%nat)))
         else
           if existsb (Nat.eqb (nth ((List.length cp) - 2) cp 0%nat)) target_is then
-             Some ((point_to_door cells (Apt source source_is) (seq.head 0%nat source_is)
+             Some ((point_to_door cells (Apt source source_is) (head 0%nat source_is)
                         (nth 0 cp 0%nat)) ++
-             door_to_door cells (seq.head 0%nat source_is) (nth 0 cp 0%nat) None (Some target)
+             door_to_door cells (head 0%nat source_is) (nth 0 cp 0%nat) None (Some target)
                  (seq.behead cp))
           else
-             Some (point_to_door cells (Apt source source_is) (seq.head 0%nat source_is) (nth 0 cp 0%nat) ++
-             door_to_door cells (seq.head 0%nat source_is) (nth 0 cp 0%nat) None None
+             Some (point_to_door cells (Apt source source_is) (head 0%nat source_is) (nth 0 cp 0%nat) ++
+             door_to_door cells (head 0%nat source_is) (nth 0 cp 0%nat) None None
                  (seq.behead cp) ++
                  path_reverse (point_to_door cells (Apt target target_is)
                     (nth (List.length cp - 1) cp 0%nat)
@@ -810,16 +805,16 @@ if Nat.ltb 0 (List.length source_is) && Nat.ltb 0 (List.length target_is) then
       else
       (* if cp has length 1, then there is only one door. if one of the
          point is on the door, it can be connected to the other, *)
-         match common_vert_edge (nth (seq.head 0%nat source_is) cells dummy_cell)
-                                (nth (seq.head 0%nat target_is) cells dummy_cell) with
+         match common_vert_edge (nth (head 0%nat source_is) cells dummy_cell)
+                                (nth (head 0%nat target_is) cells dummy_cell) with
          | Some v =>
            if on_vert_edge source v || on_vert_edge target v then
               Some ((Apt source source_is, Apt target target_is) :: nil)
            else
-              Some (point_to_door cells (Apt source source_is) (seq.head 0%nat source_is)
-                 (seq.head 0%nat target_is) ++
+              Some (point_to_door cells (Apt source source_is) (head 0%nat source_is)
+                 (head 0%nat target_is) ++
                    path_reverse (point_to_door cells (Apt target target_is)
-                        (seq.head 0%nat source_is) (seq.head 0%nat target_is)))
+                        (head 0%nat source_is) (head 0%nat target_is)))
          | None => None
          end
   | None => None
@@ -1148,14 +1143,14 @@ match e with
                 (append (display_point tr_x tr_y scale (apt_val p3))
              (append " curveto % "
                (append
-                 (Z_to_string (Z.of_nat (seq.head 0%nat (cell_indices p2))))
+                 (Z_to_string (Z.of_nat (head 0%nat (cell_indices p2))))
 "
 "))))))))
 end.
 
 Definition display_cell (tr_x tr_y scale : Q) (c : cell) :=
   display_edge tr_x tr_y scale
-      {| left_pt := seq.head dummy_pt (left_pts c);
+      {| left_pt := head dummy_pt (left_pts c);
                   right_pt := seq.last dummy_pt (left_pts c) |}.
 
 Definition display_cell_centers (tr_x tr_y scale : Q) (s : seq cell) :=
@@ -1301,7 +1296,7 @@ Lemma all_cells_have_left_neighbor :
   let cells := edges_to_cells example_bottom example_top edge_list in
   forallb (fun c =>
             (implb (andb (negb (Qeq_bool (left_limit c)
-                (p_x (seq.head dummy_pt (leftmost_points example_bottom example_top)))))
+                (p_x (head dummy_pt (leftmost_points example_bottom example_top)))))
                 (Nat.ltb 1 (List.length (left_pts c))))
             (existsb (fun c' => lr_connected c' c) cells))) cells)
         example_edge_sets = true.
