@@ -32,7 +32,11 @@ picture:
 \begin{center}
 \includegraphics[,trim={0 0 0 8cm}, clip, width=0.3\textwidth]{smooth_spiral_bare.pdf}
 \end{center}
-
+Using straight line segments may seem unrealistic at first thought, but
+these segments can be connected together to form polygons and
+these polygons can in turn be used to safely over-approximate
+obstacles with more
+complex geometry.
 
 \section{A combination of algorithms}
 The Coq program contains four phases, where each corresponds to a different
@@ -77,6 +81,62 @@ to the initial broken line is proposed.  In case where the repetitive process
 does not converge fast enough, it is possible to use the initial broken line as
 a fallback solution.
 
+As a summary, the input to the program is composed of three parts:
+\begin{enumerate}
+\item a top and a bottom straight-line segments forming a box in
+which all other obstacles have to be included,
+\item a sequence of segments describing the obstacles,
+\item and a pair of points describing the extremities that have to be
+joined by some trajectory.
+\end{enumerate}
+Given such an input, it may be that there exists no trajectory between
+the mandated extremities, for instance when an extremity is inside
+an enclosed polygon and the other extremity is outside.
+
+But when this is possible, the output is a sequence of trajectory
+fragments, where each trajectory
+fragment is either a straight-line segment or a bounded quadratic Bezier
+curve given by three control points.  This sequence of fragments connects
+the two extremities (in the sense that one of the extremities of the
+first fragment is one of the input extremities, and one of the
+extremities of the last fragment is the other input extremity) and the
+fragments are connected, in the sense that two successive fragments of
+the sequence share an extremity.  Moreover, the trajectory is smooth
+in the sense it should be possible to move from one
+of the extremities to the other at constant speed with a speed that is
+continuous and never 0.
+
+The program that is described in this paper is fully implemented in the
+functional language provided with type theory assistants, more precisely
+with the Coq system.  This implementation has to relinquish on one of
+the constraints.  In cases were making the trajectory smooth is too hard,
+a fallback solution constructed with adjacent segments that are not
+aligned is chosen.  Such a fallback solution cannot be followed with a
+speed that is continuous and never 0 (it is necessary to stop to change
+direction at the angle).  The Coq program can also be extracted and
+processed for running in other context as will be illustrated later in
+the paper.
+
+This project is curently in progress in the sense that the program
+computing the trajectories is fully implemented in Coq, but most of the
+formal proofs of correctness are currently being developed.
+
+For the property of obstacle avoidance, we plan to use the fact that
+each trajectory fragment and each straight line segment can be viewed
+as the image set of a function of type \(K \rightarrow K^2\), where \(K\) is
+the field used to
+represent coordinates, for the interval \([0,1]\).  So if an obstacle is
+represented by the function \(f_o\) and a trajectory fragment is
+represented by the function \(f_t\), we can state that this trajectory
+fragment avoids this obstacle with the following mathematical formula:
+\[\forall x y \in [0,1], f_o(x) \neq f_t(y)\]
+We can then state a general safety property by repeating this avoidance
+criterion for all obstacles and all trajectory fragments.
+
+For the smoothness property, we envision an approach that is more
+complex and will be described more in detail in the corresponding section
+of the program.  No formal proof effort has started yet for this topic.
+
 \section{Producing a sequence of events}
 The first objective is to produce a collection of cells with the following
 properties:
@@ -107,8 +167,6 @@ givent by point \(a\) and whose sequences contains \(s_1\) and \(s_2\).
 \end{center}
 \[ (a, [s_2; s_1]); (d, [s_3]); (b, []); (c, []); (e,[])\]
 
-
-
 At this point in our explanation, note that we chose to
 simplify the problem by assuming that segments only intersect at their
 extremities.  This assumption is not hard
@@ -121,24 +179,24 @@ The sorting algorithm works as follows: every time an new segment is
 processed, two events are considered for addition in the sequence of events.
 The first event is for the leftmost extremity of the segment.  If an
 event already exists at the same location, then the current segment is
-simply added to the annotation of the existing event.  If not event exists
+simply added to the annotation of the existing event.  If no event exists
 with that location, the event is simply added, again with the current segment
 in the event annotation.  The second event for the rightmost extremity of the
 segment is added similarly, except that nothing is done for event annotations.
 
-For instance in our example, if segments \(s_1\), \(s_2\), and \(s_3\) are
+For instance in our example, segments \(s_1\), \(s_2\), and \(s_3\) are
 processed in this order.  The sequence of events after processing \(s_1\) is
 \[ (a, [s_1]); (b, []).\]
 After processing \(s_2\), the sequence is
 \[ (a, [s_2; s_1]); (b, []); (c, []). \]
 We see that in this case, no new event is added for the leftmost extremity
 of \(s_2\), but \(s_2\) is added to the sequence of segments annotating the
-event a location \(a\).
+event at location \(a\).
 
 Another simplification to our presentation of the problem is that
 vertical segments are not allowed in our input.  Again, we think that
 it is possible to work around this limitation: If one wishes to add
-vertical obstacles, only there extremities should be added as events
+vertical obstacles, only their extremities should be added as events
 without outgoing edges in the sequence of events.  We expect the
 cells to be created where a safe boundary appears between the two
 events.  It is enough to remove this safe boundary from the cells to
@@ -176,9 +234,9 @@ next phase of the algorithm will be processing events located at
 \(a\), \(d\), \(b\), \(c\), \(e\) in this order.
 
 \section{Producing cells}
-To understand how cells are produce, we can keep the mental model of a
-sweeping line, which is the vertical line passing through the location of
-current event.
+To understand how cells are produced, we can keep the mental model of a
+sweeping line, which is the vertical line passing through the location 
+of the current event.
 When producing cells, we distinguish between closed and open cells.
 The closed cells lie to the left of the sweeping line, they are
 complete and have well-defined left and right sides.  The open cells
@@ -197,19 +255,20 @@ The processing of a new event works as follows:
 \begin{enumerate}
 \item The sequence of open cells is decomposed into three parts:
 a first sequence of untouched cells, a second sequence of cells in
-contact with the given event, and a third sequence of cells of
+contact with the given event, and a third sequence of
 untouched cells
-\item All cells in contact are closed: their right side is
+\item All cells in contact are transformed into closed cells:
+their right side is
   described and they are added to the collection of closed cells
 \item If the given event has \(n\) outgoing edges, then \(n+1\) new
   open cells are created.  The outgoing edges are first sorted vertically.
   The first cell has for its low edge the
-  same low edge as first cell in the first of the contact cells, and
+  same low edge as the first cell in the contact cells, and
   as high edge the first of the outgoing edges (after sorting).  The
   last new cell is similar but with the last outgoing edge and the
   high edge of the last contact cell.  All other newly created cells have a
   left side that is reduced to a single point, because the low and
-  high edges meet at the event that is currently processed.
+  high edges meet at the event that is being processed.
 \end{enumerate}
 For this algorithm to work, we add an extra constraint on the data:
 the whole working space is enclosed between a bottom and a top edge that
@@ -222,17 +281,19 @@ vertically aligned.  When this happens, a naive version of our
 algorithm produces cells that have the left side and the right side on the
 same vertical line.  These cells are flat and do not satisfy two important
 properties that we like about nonempty cells.  First in a non-flat cell,
-any path from a safe point on the left side to a safe point on the
-right side is safe.  Second, in a non-flat cell, any path to a safe
-point on any side to the center of the cell is safe.
+any straight line path from a safe point on the left side to a safe point on
+the right side is guaranteed to have no collisions with the low and high
+edges.  Second, in a non-flat cell, any straight line to a safe
+point on any side to the center of the cell is guaranteed to have no
+collision with the low and high edges.
 
 To recover these properties, we modified our algorithm to memorize the
 position of the last processed event, together with the last opened
 cell and the last closed cell.  When the current event is vertically
 aligned with the last processed event, we can avoid creating a flat
 closed cell by updating the last opened cell and the last closed
-cell.  For last closed cell, only the obstacles on the right side need
-to be updated.  However, this adds complexity in the proofs about the
+cell.  For the last closed cell, only the unsafe points on the right side
+need to be updated.  However, this adds complexity in the proofs about the
 algorithm.
 
 At the moment of writing these lines, this modified vertical cell
@@ -244,20 +305,22 @@ far are as follows:
 \item The sequence of open cells is sorted vertically, the cells are
   adjacent, and they cover the whole space between the bottom and top
   edges,
-\item All low and high edge of the current open cells contain a point
+\item All low and high edges of the current open cells contain a point
 that is vertically aligned with the currently processed event,
-\item All cells are disjoint,
+\item All hybrid cells, composed of the interior of a cell and the relevant
+part of its high edge, are disjoint,
 \item The obstacles are covered by the high edges of existing cells,
   closed or open and the outgoing edges of events that have not been
   processed yet.
 \end{itemize}
 The last two properties put together should be enough to guarantee
-that the interior of all closed cells is safe.  We have yet to
+that the interior of all closed cells is guaranteed to contain no
+element of an obstacle.  We have yet to
 understand how we will express and prove safety properties for points
 on the left and right sides of closed cells.
 
 For now, the left and right sides of closed edges are equipped with
-list of points, where the first one belongs to the cell's high edge
+lists of points, where the first one belongs to the cell's high edge
 and the last one belongs to the cells low edge.  The other points on
 these lists correspond to extremities of edges that end or start on
 this side.  The points on the side of an edge that are distinct from
@@ -272,7 +335,7 @@ doors between one cell and the other.
 
 \section{Making a broken line trajectory between two points}
 With the graph of cells and doors between these cells, we can already
-construct safe paths between two points in the space, which we shall
+construct safe paths between two given extremities, which we shall
 the source and target points for clarity.  We only need the source and
 target to be either inside the same polygon made of obstacles, or
 inside the work space and outside of any polygon.
@@ -281,34 +344,40 @@ The first step is to find the two cells that contain the source and
 the target.  If the source and target are in the same cell, it is
 enough to draw a straight line segment from the source to the target.
 
-If the two cells are different, we can explore the graph to check for
+If the two cells are different, we can explore the cell graph to check for
 the existence of a path in this graph from the source cell to the
 target cell.  This path is composed of edges of the graph and each of
-the graph edges is actually a door between two cells.  It is enough to
-construct a sequence of paths between the middle points of each door
-that is an element of this path.  If two successive doors are not on the same
+the graph edges is actually a door between two cells.  To obtain a
+broken line trajectory, It is enough to
+construct a sequence of smaller trajectories between the middle points
+of each door that is an element of this path.
+
+If two successive doors are not on the same
 vertical line, these two doors are on both sides of a same cell.  A
-straight segment from the middle of the first door to the middle of
-the second door is a safe path in the interior of the cell (this
-property would not be satisfied if the cell was flat).
+straight line segment from the middle of the first door to the middle of
+the second door is a safe trajectory in the interior of the cell (this
+property would not be satisfied if the cell was flat, hence our insistence
+on producing non-empty cells).  This illustrated in the following drawing,
+where obstacles are given by solid lines, doors by vertical dotted lines,
+and the trajectory fragment is given by the dashed line.
 
 \begin{center}
 \includegraphics[,trim={0 12cm 0 12cm}, clip, width=0.3\textwidth]{safe_straight_path.pdf}
 \end{center}
 
-
 When two successive doors are on the same vertical line, a straight
 line between the center of one door and the center of the other is
-bound to be unsafe, because it will touch the lowest bound of the
+most probably unsafe, because it will touch the lowest bound of the
 highest of the two doors, and this lowest bound is the extremity of
-some obstacle.  To avoid this, we build a path composed of two
-segments.  The first segment goes from the middle of the first door to
-the center of the cell.  The second segment goes from the center of
-the cell to the middle of the second door.  Such a two segment path is
-safe because the two extremities are safe, and the interior of these
-paths lie inside the interior of the cell, which is safe.
+some obstacle.  To avoid this collision, we build a trajectory composed of
+two straight line segments.  The first segment goes from the middle of
+the first door to the center of the cell.  The second segment goes
+from the center of the cell to the middle of the second door.  Such a
+two-segment trajectory is safe because the two extremities are safe, and the
+interiors of these segments lie inside the interior of the cell, which is
+safe.
 
-An example of safe path between two doors on the same side of a cell is
+An example of safe trajectory between two doors on the same side of a cell is
 given in the following figure:
 \begin{center}
 \includegraphics[,trim={0 0 0 8cm}, clip, width=0.3\textwidth]{broken_safe_path.pdf}
@@ -324,9 +393,9 @@ The trajectory described in the previous section is given by a
 sequence of segments, where each segment shares an extremity with its
 predecessor and the other extremity with its successor.  We shall call
 these extremities the {\em corners} of the trajectory.  We wish to
-replace each corner by a smooth curve and to connect each curve fragment in
+replace each corner with a smooth curve and to connect each curve fragment in
 a smooth fashion, in other words, so that a point can travel the curve with
-continuous speed (in fact, we also wish to have continuous acceleration).
+continuous non-zero speed.
 
 We expect that the smooth connection constraint can also be rephrased
 with the following sufficient criteria: the curve fragments are connected,
@@ -337,7 +406,9 @@ two curves connect at the point where several straight lines cross.
 These straight lines are the two tangents of the curves at the point of
 intersection (two distinct dashed lines) and the line crossing the
 tangents that separates locally the two curves (dotted line).  In the
-first figure the two connected curves are on both sides of the tangent.  In the second figure, the two connected curves are on the same side of the tangent.
+first figure the two connected curves are on both sides of the tangent.
+In the second figure, the two connected curves are on the same side of the
+tangent.
 
 \begin{center}
 \includegraphics[,trim={0 2cm 0 21cm}, clip, width=0.6\textwidth]{smooth_connect.pdf}
@@ -362,6 +433,12 @@ the segment \((B,C)\) in \(C\).
 \begin{center}
 \includegraphics[,trim={0 5cm 0 16cm}, clip, width=0.3\textwidth]{bezier_example3.pdf}
 \end{center}
+
+This construction makes it obvious that the convex hull of
+the triangle \(A\), \(B\), \(C\) is a superset of the set of points on the
+trajectory.  In other words, this convex hull is an over approximation of
+the trajectory.  To check the absence of collision, it is enough to check that
+the obstacles have no intersection with this convex hull.
 
 %\subsection{From a broken line to a smooth sequence of Bézier curves}
 A broken line \(A\) \(B\) \(C\) \(D\) can be transformed into a sequence
@@ -391,7 +468,7 @@ collide with the obstacles.  We designed two more algorithms, one to check
 that a Bézier curve stays in safe territory, and the other to repair
 trajectories whose Bézier curve do collide with the obstacles.
 
-These algorithms are based on a strong property of Bézier curves,
+The first algorithm is based on a strong property of Bézier curves,
 which we shall call the {\em dichotomy property}.  In the description above
 where we showed how to construct the point \(F\) which belongs to
 the Bézier curve, it turns out that the triplets \(A\) \(D\) \(F\) and
@@ -400,10 +477,12 @@ original Bézier curve in two complementary subsets.  The triplet
 \(A\) \(D\) \(F\) defines a curves that
 covers all the points of the curve defined by \(A\) \(B\) \(C\)
 for a parameter \(t' \leq t\), while the triplet \(F\) \(E\) \(C\) 
-defines a curves that covers all the points of the curve defined by \(A\) \(B\)
-\(C\) for a parameter \(t'\geq t\).  The convex hull for \(A\) \(D\)
-\(F\) is much smaller than the convex hull for \(A\) \(B\) \(C\), and
-thus the dichotomy operation makes it possible to replace a gross
+defines a curves that covers all the points of the curve defined
+by \(A\) \(B\) \(C\) for a parameter \(t'\geq t\).  There are large
+parts of the convex hull for \(A\) \(B\) \(C\) that are not contained in
+either the convex hull for \(A\) \(D\) \(F\) or the convex hull for
+\(F\) \(E\) \(C\),
+and thus the dichotomy operation makes it possible to replace a gross
 approximation of the Bézier curve by a more precise one.
 
 Our checking
@@ -412,7 +491,9 @@ information to conclude that there is a guarantee that the Bézier curve
 is included in the union of the interior of two cells and the door
 between these cells, or that there is a guarantee that the Bézier curve
 steps out of this union, in which case we have proved that the Bézier
-curve is unsafe.
+curve is unsafe.  We may also wish to stop checking after a fixed number
+of dichotomy steps and declare the trajectory to be unsafe, even if we have
+not detected an actual collision.
 
 When we have an unsafe Bézier curve, we can repair the situation by
 replacing the Bézier curve \(A\) \(B\) \(C\) by the composite path
@@ -422,13 +503,16 @@ segment \((A,M)\), the Bézier curve \(M\) \(B\) \(N\), and finally the
 segment \((N, C)\).  This composite path is smooth, because the
 junctions at \(M\) and \(N\) have the same tangent and direction, and
 it is also closer to the initial broken line trajectory.  
-This new path needs to be checked again,
+This new trajectory needs to be checked again,
 and maybe the replacement process can be repeated.  Ultimately,
 if the replacement process were repeated indefinitely the limit of the
-smooth path would the broken line path.
+smooth path would be the broken line path.  There exists a strong theoretical
+argument showing that such an infinite repetition of dichotomy will not
+happen, this is known as the theorem of three circles, and a formal proof
+of this result was developed by Zsid\'o \cite{Zsido2014}.
 
 The following figure illustrates the case where the faulty Bézier
-curve drawn as a dotted line is repaired into the path composed of two
+curve drawn as a dotted line is repaired into the trajectory composed of two
 straight line segments and a smaller Bézier curve.  The vertical
 dashed line represents a door and the solid straight line below
 represents an obstacle.
@@ -440,7 +524,8 @@ represents an obstacle.
 In our program, we first produce a candidate Bézier curve for each
 corner, and we then check whether this curve is safe.  If not, we
 produce Bézier curves, that are closer to the broken line and
-repeatedly check their safety.  After a limited number of iterations,
+repeatedly check their safety.  To obtain a program that is executable
+in Coq, After a limited number of iterations,
 the program falls back to the initial broken line corner if need be.
 We only wish to prove that the checking procedure is correct.  For
 this program, we will not be able to prove that the resulting trajectory
@@ -456,14 +541,15 @@ division operation provided for rational numbers suffices.
 When defining Bézier curves, we only need to construct midpoints of
 existing points to define the new control points for the successive
 Bézier curves that we consider.  Working with rational numbers
-suffices to have exact computation.
+again suffices to have exact computation.
 
 The output can be displayed by simply traversing the
 output data structure and generating simple postscript commands for
 each of the straight line or Bézier curve segment.  Our program uses
 quadratic Bézier curves, while postscript supports cubic Bézier
 curves, but converting from one to the other is easy.  In the end,
-Postscript uses limited precision numbers so approximations are
+Postscript uses limited precision numbers instead of rational numbers.
+Approximations are
 needed, but these approximations are only useful for display purposes.
 
 The Coq system also provides an extraction facility, so the
@@ -477,12 +563,34 @@ this Javascript code, visible at the following link:
 
 \pagebreak
 
-An example of trajectory computed in this setup is given by the
-following illustration:
+The minimal user-interface provided on that page gives access to a 
+window with a board of 40 by 40 square tiles and two mode of operations, in
+the first mode of operation the user can add and remove obstacles, in the
+second mode of operation the user can add the source and target points.  Two
+modes of display are also also provided, one where the square tiles are
+visible (this is more practical for reproducing experiments), and one where
+the cells obtained after vertical cell decomposition are visible.
+
+The following illustration shows the result of running this program for
+a situation close to that used in our running example, where the display mode
+shows the cells.
 \begin{center}
 \includegraphics[width=0.7\textwidth]{illustration.png}
 \end{center}
 
+\section{Future work}
+We are planning several stages of future work concerning this program.  In
+the short term, we wish to have more proofs concerning the formal model.
+At the time of writing these lines, the formal proof of the vertical cell
+decomposition algorithm is not complete.  For instance, we have already
+proved that the operation repeated for each event preserves the property that
+all cells are disjoint, but we have not yet proved that all points in
+the doors are safe or that the obstacles are included in the edges of the
+cells or the outgoing edges of the events that have not been processed yet.
+
+For the other parts of the program, we only elements of proofs, scattered in
+previous work, which we are going to describe in the next section on related
+work.
 \section{Related work}
 In this section, we mostly concentrate on related work that entails formal
 verification.
@@ -553,7 +661,7 @@ done by Thomas Portet.  Studies of potential collisions between Bézier
 curves and straight line segments were done by Quentin Vermande.
 Laurent Théry added the possibility to visualize the results on a
 web-page.
-x
+
 \bibliographystyle{plain}
 \bibliography{FHG_paper}
 
