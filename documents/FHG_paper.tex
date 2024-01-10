@@ -233,10 +233,11 @@ intersect at their extremities.  This assumption is not hard to
 satisfy, as it is possible to take a collection of segments which do
 not satisfy this assumption and produce a new collection of segments
 that cover exactly the same points of the plane but satisfy the
-assumption.  A program that performs this cleaning step has been
-implemented.  It may be that an alternative solution is to detect
-collisions at the time the cells are constructed and to replace edges
-on the fly, for a better complexity of the total program.
+assumption.  We implemented a naive program that performs this cleaning
+step by visiting all pairs of edges and, upon detecting an
+intersection, replacing the two edges either by three edges or four
+edges depending on whether the extremity of one edge is in the middle
+of the other or whether they cross in their middle.
 
 Another simplification to our presentation of the problem is that
 vertical segments are not allowed in our input.  Again, we think that
