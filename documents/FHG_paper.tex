@@ -355,11 +355,12 @@ their right side is
   described and they are added to the collection of closed cells
 \item If the given event has \(n\) outgoing edges, then \(n+1\) new
   open cells are created.  The outgoing edges are first sorted vertically.
-  The first cell has for its low edge the
-  same low edge as the first cell in the contact cells, and
+  The first cell has for its low edge a portion of the same obstacle that
+  was used for the low edge of the first cell in the contact cells, and
   as high edge the first of the outgoing edges (after sorting).  The
-  last new cell is similar but with the last outgoing edge and the
-  high edge of the last contact cell.  All other newly created cells have a
+  last new cell is similar but with the last outgoing edge as a portion
+  of the same obstacle as the high edge of the last contact cell.
+  All other newly created cells have a
   left side that is reduced to a single point, because the low and
   high edges meet at the event that is being processed.
 \end{enumerate}
@@ -390,8 +391,8 @@ invariant so far are as follows:
   edges,
 \item All low and high edges of the current open cells contain a point
 that is vertically aligned with the currently processed event,
-\item All sets composed of the interior of a cell and the relevant
-part of its high edge, are disjoint,
+\item All sets composed of the interior of a cell and its high edge
+are disjoint,
 \item The obstacles are covered by the high edges of existing cells,
   closed or open and the outgoing edges of events that have not been
   processed yet.
