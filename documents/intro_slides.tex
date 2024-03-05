@@ -1,6 +1,10 @@
 \documentclass[compress]{beamer}
 \usepackage[latin1]{inputenc}
 \usepackage{alltt}
+\newdimen\topcrop
+\topcrop=8cm  %alternatively 10cm
+\newdimen\topcropBezier
+\topcropBezier=16cm %alternatively 19cm
 
 \setbeamertemplate{footline}[frame number]
 \title{Smooth trajectories in straight line mazes}
@@ -9,6 +13,7 @@ Joint work with Thomas Portet, Quentin Vermande}
 \date{April 2023}
 \mode<presentation>
 \begin{document}
+
 \maketitle
 \begin{frame}
 \frametitle{The game}
@@ -31,7 +36,7 @@ is found as soon as one exists
 \end{frame}
 \begin{frame}
 \frametitle{Example}
-\includegraphics[trim={0 0 0 10cm}, clip, width=\textwidth]{empty_spiral.pdf}
+\includegraphics[trim={0 0 0 \topcrop}, clip, width=\textwidth]{empty_spiral.pdf}
 \end{frame}
 \begin{frame}
 \frametitle{Cell decomposition}
@@ -61,12 +66,12 @@ is found as soon as one exists
 \end{frame}
 \begin{frame}
 \frametitle{Intermediate position for vertical cell decomposition (1)}
-\includegraphics[trim={0 0 0 10cm}, clip, width=\textwidth]{partial_spiral.pdf}
+\includegraphics[trim={0 0 0 \topcrop}, clip, width=\textwidth]{partial_spiral.pdf}
 
 \end{frame}
 \begin{frame}
 \frametitle{Intermediate position for vertical cell decomposition (2)}
-\includegraphics[trim={0 0 0 10cm}, clip, width=\textwidth]{partial_spiral2.pdf}
+\includegraphics[trim={0 0 0 \topcrop}, clip, width=\textwidth]{partial_spiral2.pdf}
 
 \end{frame}
 \begin{frame}
@@ -85,7 +90,7 @@ is found as soon as one exists
 \end{frame}
 \begin{frame}
 \frametitle{Vertical cell decomposition example}
-\includegraphics[trim={0 0 0 10cm}, clip, width=\textwidth]{cells_spiral.pdf}
+\includegraphics[trim={0 0 0 \topcrop}, clip, width=\textwidth]{cells_spiral.pdf}
 \end{frame}
 \begin{frame}
 \frametitle{Cell assumptions}
@@ -113,7 +118,7 @@ is found as soon as one exists
 \end{frame}
 \begin{frame}
 \frametitle{Two examples of elementary safe paths}
-\includegraphics[trim={0 0 0 10cm}, clip, width=\textwidth]{spiral_safe2.pdf}
+\includegraphics[trim={0 0 0 \topcrop}, clip, width=\textwidth]{spiral_safe2.pdf}
 \end{frame}
 \begin{frame}
 \frametitle{Making a broken line path between points}
@@ -131,7 +136,7 @@ is found as soon as one exists
 \begin{frame}
 \frametitle{broken line safe path between points}
 \label{broken-line}
-\includegraphics[trim={0 0 0 10cm}, clip, width=\textwidth]{spiral_bline.pdf}
+\includegraphics[trim={0 0 0 \topcrop}, clip, width=\textwidth]{spiral_bline.pdf}
 \end{frame}
 \begin{frame}
 \frametitle{Making corners smooth}
@@ -164,7 +169,7 @@ is tangent to the curve in \(a_0\)
 \item Straight edge tips of this drawing are control points
 \item The curve is inside the triangle
 \end{itemize}
-\includegraphics[trim={0 6cm 0 19cm}, clip, width=\textwidth]{bezier_example.pdf}
+\includegraphics[trim={0 6cm 0 \topcropBezier}, clip, width=\textwidth]{bezier_example.pdf}
 \end{frame}
 \begin{frame}
 \frametitle{Plotting the Bezier curve}
@@ -173,7 +178,7 @@ is tangent to the curve in \(a_0\)
 \item Control points for the two subcurves are given by the new point,
 the initial starting and end points, and the solid green straight edge tip
 \end{itemize}
-\includegraphics[trim={0 6cm 0 19cm}, clip, width=\textwidth]{bezier_example2.pdf}
+\includegraphics[trim={0 6cm 0 \topcropBezier}, clip, width=\textwidth]{bezier_example2.pdf}
 \end{frame}
 \begin{frame}
 \frametitle{Using Bezier curves for smoothing}
@@ -231,17 +236,17 @@ the initial starting and end points, and the solid green straight edge tip
 \begin{frame}
 \frametitle{Final trajectories}
 \label{final-spiral-with-br}
-\includegraphics[trim={0 0 0 10cm}, clip, width=\textwidth]{smooth_spiral.pdf}
+\includegraphics[trim={0 0 0 \topcrop}, clip, width=\textwidth]{smooth_spiral.pdf}
 \end{frame}
 \begin{frame}
 \frametitle{Final trajectories}
 \label{final-spiral}
-\includegraphics[trim={0 0 0 10cm}, clip, width=\textwidth]{smooth_spiral2.pdf}
+\includegraphics[trim={0 0 0 \topcrop}, clip, width=\textwidth]{smooth_spiral2.pdf}
 \end{frame}
 \begin{frame}
 \frametitle{Final trajectories: repaired curve example}
 \label{final-polygon}
-\includegraphics[trim={0 0 0 10cm}, clip, width=\textwidth]{polygon.pdf}
+\includegraphics[trim={0 0 0 \topcrop}, clip, width=\textwidth]{polygon.pdf}
 \end{frame}
 \begin{frame}
 \frametitle{Proof tools}
