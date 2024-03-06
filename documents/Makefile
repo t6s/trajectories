@@ -17,4 +17,4 @@ FHG_paper.pdf : FHG_paper.tex FHG_paper.bib $(PDFFILES) illustration.png
         FHG_paper.tex
 
 $(PDFFILES): %.pdf: %.ps
-	ps2pdf $<
+	ps2pdf -sPAPERSIZE=a4 $<
