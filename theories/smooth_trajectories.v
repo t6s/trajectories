@@ -8,7 +8,6 @@ Definition scan :=
   scan Q Qeq_bool Qle_bool 
     Qplus Qminus Qmult Qdiv 0 edge Bedge left_pt right_pt.
 
-
 (* A manner of folding a function over list in a tail recursive way.
   TODO : figure out if this is already covered by an existing list
   generic function. *)
