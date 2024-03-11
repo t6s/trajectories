@@ -370,8 +370,8 @@ Definition rightmost_points (bottom top : edge) :=
     else
         [::]
   else
-     if vertical_intersection_point (left_pt top) bottom is Some pt then
-        [:: pt; right_pt top]
+     if vertical_intersection_point (right_pt top) bottom is Some pt then
+        no_dup_seq [:: pt; right_pt top]
      else
         [::].
 
