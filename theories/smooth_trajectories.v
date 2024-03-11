@@ -2,31 +2,32 @@ From mathcomp Require Import all_ssreflect.
 Require Import ZArith QArith List String OrderedType OrderedTypeEx FMapAVL.
 Require Import generic_trajectories.
 
+Definition Qlt_bool x y := andb (negb (Qeq_bool x y)) (Qle_bool x y).
+
 Record edge := Bedge {left_pt : pt Q; right_pt : pt Q}.
 
+Notation R := Q.
+Notation pt := (pt Q).
+Notation Bpt := (Bpt Q).
+Notation dummy_pt := (dummy_pt Q 0).
+Notation p_x := (p_x Q).
+Notation p_y := (p_y Q).
+Notation cell := (cell Q edge).
+Notation left_pts := (left_pts Q edge).
+Notation right_pts := (right_pts Q edge).
+Notation dummy_cell := (dummy_cell Q 0 edge Bedge).
+Notation low := (low Q edge).
+Notation high := (high Q edge).
+Notation event := (event Q edge).
+Notation point := (point Q edge).
+Notation outgoing := (outgoing Q edge).
+
 Definition scan :=
-  scan Q Qeq_bool Qle_bool 
+  complete_process Q Qeq_bool Qle_bool 
     Qplus Qminus Qmult Qdiv 0 edge Bedge left_pt right_pt.
 
-(* A manner of folding a function over list in a tail recursive way.
-  TODO : figure out if this is already covered by an existing list
-  generic function. *)
-Fixpoint iter_list [A B : Type] (f : A -> B -> B) (s : seq A) (init : B) :=
-  match s with
-  | [::] => init
-  | a :: tl => iter_list f tl (f a init)
-  end.
-
-Definition scan (events : seq event) (bottom top : edge) : seq cell :=
-  match events with
-  | [::] => [:: complete_last_open bottom top (start_open_cell bottom top)]
-  | ev0 :: events =>
-    let start_scan := start ev0 bottom top in
-    let final_scan := iter_list step events start_scan in
-      map (complete_last_open bottom top)
-      (lst_open final_scan :: sc_open1 final_scan ++ sc_open2 final_scan) ++
-      lst_closed final_scan :: sc_closed final_scan
-  end.
+Definition edges_to_events :=
+  edges_to_events Q Qeq_bool Qle_bool edge left_pt right_pt.
 
 (* This is the main function of vertical cell decomposition. *)
 Definition edges_to_cells bottom top edges :=
@@ -155,7 +156,8 @@ Definition door_right_cell (cells : seq cell) (v : vert_edge) :=
      (seq.iota 0 (List.length cells)).
 
 Definition vert_edge_midpoint (ve : vert_edge) : pt :=
-  {|p_x := ve_x ve; p_y := (ve_top ve + ve_bot ve) / 2|}.
+  Bpt (ve_x ve) ((ve_top ve + ve_bot ve) / 2).
+
 
 (* connection from left to right is obtained by computing an intersection. *)
 Definition lr_connected (c1 c2 : cell) : bool :=
@@ -236,7 +238,7 @@ Definition common_vert_edge (c1 c2 : cell) : option vert_edge:=
       (cell_safe_exits_right c2).
 
 Definition midpoint (p1 p2 : pt) : pt :=
- {| p_x := (p_x p1 + p_x p2) / 2; p_y := (p_y p1 + p_y p2) / 2|}.
+ Bpt ((p_x p1 + p_x p2) / 2) ((p_y p1 + p_y p2) / 2).
 
 Definition cell_center (c : cell) :=
   midpoint
@@ -347,6 +349,13 @@ Definition path_adjacent_cells (cells : seq cell) (source target : pt)
                Apt target (target_i :: nil)) :: nil)
   | None => None
   end.
+
+Definition point_under_edge :=
+  point_under_edge Q Qle_bool Qplus Qminus Qmult 0 edge left_pt right_pt.
+
+Definition point_strictly_under_edge :=
+  point_strictly_under_edge  Q Qeq_bool Qle_bool Qplus Qminus Qmult 0 edge
+  left_pt right_pt.
 
 Definition strict_inside_closed p c :=
   negb (point_under_edge p (low c)) &&
@@ -585,6 +594,8 @@ match fuel with
       else
          Some false
 end.
+
+Definition pue_formula := pue_formula Q Qplus Qminus Qmult.
 
 (* This function verifies that the Bezier curve does pass through the
   door that was initially given has a constraint for the broken line.  This
@@ -895,13 +906,9 @@ Lemma example_edge_cond :
                edge_cond edge_list) example_edge_sets = true.
 Proof. easy. Qed.
 
-Notation BOTTOM :=
-  ({| left_pt := {| p_x := -4; p_y := -4|};
-      right_pt := {| p_x := 4; p_y := -4|}|}).
+Notation BOTTOM := (Bedge (Bpt (-4) (-4)) (Bpt 4 (-4))).
 
-Notation TOP :=
-  ({| left_pt := {| p_x := -4; p_y := 2|};
-      right_pt := {| p_x := 4; p_y := 2|}|}).
+Notation TOP := (Bedge (Bpt (-4) 2) (Bpt 4 2)).
 
 Definition example_bottom : edge := BOTTOM.
 
@@ -914,6 +921,10 @@ Lemma example_inside_box :
      forallb (fun e => inside_box (point e) example_bottom example_top)
        (edges_to_events edge_list)) example_edge_sets = true.
 Proof. easy. Qed.
+
+Definition leftmost_points :=
+  leftmost_points Q Qeq_bool Qle_bool Qplus Qminus Qmult Qdiv edge
+  left_pt right_pt.
 
 (* This lemma is testing the code.  It checks that all cells
    that have a vertical left edge have a neighbor on their left
