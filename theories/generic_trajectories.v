@@ -56,8 +56,10 @@ Variable R0 R2 : R.
 Record pt := Bpt {p_x : R; p_y : R}.
 (* In the original development, edge have the data invariant that
   the left point has a first coordinate strictly less than the right point. *)
-Record edge :=
- Bedge { left_pt : pt; right_pt : pt}.
+
+Variable edge : Type.
+Variable Bedge : pt -> pt -> edge.
+Variables left_pt right_pt : edge -> pt.
 
 Definition same_x (p : pt) (v : R) :=
   R_eqb (p_x p) v.
@@ -70,8 +72,7 @@ Record cell := Bcell  {left_pts : list pt; right_pts : list pt;
 
 Definition dummy_pt := ({| p_x := R0; p_y := R0|}).
 
-Definition dummy_edge := 
-  {| left_pt := dummy_pt; right_pt := dummy_pt|}.
+Definition dummy_edge := Bedge dummy_pt dummy_pt.
 
 Definition dummy_cell := 
   {| left_pts := nil; right_pts := nil; low := dummy_edge; high := dummy_edge|}.
@@ -358,7 +359,7 @@ Definition leftmost_points (bottom top : edge) :=
         [::]
   else
      if vertical_intersection_point (left_pt bottom) top is Some pt then
-        [:: pt; left_pt bottom]
+        no_dup_seq [:: pt; left_pt bottom]
      else
         [::].
 
@@ -369,10 +370,10 @@ Definition rightmost_points (bottom top : edge) :=
     else
         [::]
   else
-    if vertical_intersection_point (right_pt top) bottom is Some pt then
-       [:: pt; right_pt top]
-    else
-       [::].
+     if vertical_intersection_point (left_pt top) bottom is Some pt then
+        [:: pt; right_pt top]
+     else
+        [::].
 
 Definition complete_last_open (bottom top : edge) (c : cell) :=
   match c with
@@ -401,20 +402,20 @@ Fixpoint iter_list [A B : Type] (f : A -> B -> B) (s : seq A) (init : B) :=
   | a :: tl => iter_list f tl (f a init)
   end.
 
-Definition scan (events : seq event) (bottom top : edge) : seq cell :=
+Definition complete_process (events : seq event) (bottom top : edge) : seq cell :=
   match events with
   | [::] => [:: complete_last_open bottom top (start_open_cell bottom top)]
   | ev0 :: events =>
     let start_scan := start ev0 bottom top in
     let final_scan := iter_list step events start_scan in
       map (complete_last_open bottom top)
-      (lst_open final_scan :: sc_open1 final_scan ++ sc_open2 final_scan) ++
+      (sc_open1 final_scan ++ lst_open final_scan :: sc_open2 final_scan) ++
       lst_closed final_scan :: sc_closed final_scan
   end.
 
 (* This is the main function of vertical cell decomposition. *)
 Definition edges_to_cells bottom top edges :=
-  scan (edges_to_events edges) bottom top.
+  complete_process (edges_to_events edges) bottom top.
 
 (* SECOND PART : computing a path in the cell graph *)
 (* This code is taken from github.com/ybertot/breadth_first_search.
