@@ -315,7 +315,7 @@ Definition simple_step (fc cc lc : seq cell) (lcc : cell) (le he : edge)
     opening_cells_aux (point ev) (sort edge_below (outgoing ev)) le he in
     Bscan (fc ++ nos) lno lc closed_cells' last_new_closed he (p_x (point ev)).
 
-Definition step (e : event) (st : scan_state) : scan_state :=
+Definition step (st : scan_state) (e : event) : scan_state :=
    let p := point e in
    let '(Bscan op1 lsto op2 cls cl lhigh lx) := st in
    if negb (same_x p lx) then
@@ -393,21 +393,12 @@ Definition start (first_event : event) (bottom : edge) (top : edge) :
          (close_cell (point first_event) (start_open_cell bottom top))
          top (p_x (point first_event))).
 
-(* A manner of folding a function over list in a tail recursive way.
-  TODO : figure out if this is already covered by an existing list
-  generic function. *)
-Fixpoint iter_list [A B : Type] (f : A -> B -> B) (s : seq A) (init : B) :=
-  match s with
-  | [::] => init
-  | a :: tl => iter_list f tl (f a init)
-  end.
-
 Definition complete_process (events : seq event) (bottom top : edge) : seq cell :=
   match events with
   | [::] => [:: complete_last_open bottom top (start_open_cell bottom top)]
   | ev0 :: events =>
     let start_scan := start ev0 bottom top in
-    let final_scan := iter_list step events start_scan in
+    let final_scan := foldl step start_scan events in
       map (complete_last_open bottom top)
       (sc_open1 final_scan ++ lst_open final_scan :: sc_open2 final_scan) ++
       lst_closed final_scan :: sc_closed final_scan

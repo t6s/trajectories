@@ -1,4 +1,4 @@
-Require Import Arith QArith List smooth_trajectories.
+Require Import Arith QArith List generic_trajectories smooth_trajectories.
 Require Import Reals.
 
 Open Scope R_scope.
@@ -140,7 +140,7 @@ let intersection_x := Qred (cross_first_coordinate e1 e2) in
 
 (* returns the first coordinates of all points where edge e intersects
   an existing edge from the sequence of events. *)
-Fixpoint find_all_crossing_points (e : edge) (evs : seq event) : seq Q :=
+Fixpoint find_all_crossing_points (e : edge) (evs : list event) : list Q :=
   match evs with
   | nil => nil
   | Bevent p outg :: evs' =>
@@ -157,6 +157,9 @@ Fixpoint make_broken_edges (e : edge) (break_points : seq Q) :=
     Bedge (left_pt e) intermediate_point :: 
     make_broken_edges (Bedge intermediate_point (right_pt e)) bps
   end.
+
+Notation Bevent := (@Bevent _ _).
+Notation add_event := (@add_event Q Qeq_bool Qle_bool edge).
 
 Fixpoint repair_hit_edge (g : edge) (evs : seq event) : seq event :=
 match evs with
@@ -177,26 +180,26 @@ match evs with
   end
 end.
 
-Definition add_edge_avoid_cross (e : edge) (evs : seq event) :=
-  iter_list (fun e' evs' =>
+Definition add_edge_avoid_cross (evs : seq event) (e : edge) :=
+  seq.foldl (fun evs' e' =>
                add_event (left_pt e') e' false 
                   (add_event (right_pt e') e' true
                         (repair_hit_edge e' evs')))
+     evs
      (make_broken_edges e 
-          (no_dup_seq Qeq_bool
-              (path.sort Qlt_bool (find_all_crossing_points e evs))))
-     evs.
+          (no_dup_seq_aux Qeq_bool
+              (path.sort Qlt_bool (find_all_crossing_points e evs)))).
 
-Definition add_edge_avoid_cross_debug (e : edge) (evs : seq event) :=
-  iter_list (fun e' evs' =>
+Definition add_edge_avoid_cross_debug (evs : seq event) (e : edge) :=
+  seq.foldl (fun evs' e' =>
                add_event (left_pt e') e' false
                   (add_event (right_pt e') e' true
                         (repair_hit_edge e' evs')))
-     (make_broken_edges e (find_all_crossing_points e evs))
-     evs.
+     evs
+     (make_broken_edges e (find_all_crossing_points e evs)).
 
 Definition edges_to_events_nc (es : seq edge) : seq event :=
-  iter_list add_edge_avoid_cross es nil.
+  seq.foldl add_edge_avoid_cross nil es.
 
 Definition e1 := (Bedge (Bpt 0 (-2)) (Bpt 2 (-1))).
 Definition e2 := (Bedge (Bpt 0 0) (Bpt 2 (-2))).
@@ -206,6 +209,7 @@ Definition e4 := Bedge (Bpt 0 0) (Bpt 2 0).
 Compute (make_broken_edges e2 
            (find_all_crossing_points e2 (edges_to_events_nc (e1 :: nil)))). 
 
+Notation dummy_edge := (dummy_edge Q 0 edge Bedge).
 
 Definition evs14 := edges_to_events_nc (e1 :: e2 :: e3 :: e4 :: nil).
 Definition evs13 := edges_to_events_nc (e1 :: e2 :: e3 :: nil).
@@ -233,14 +237,15 @@ Definition display_break_points (e : edge) (bps : seq Q) :=
                    (Bpt (p_x (right_pt e)) (p_y (right_pt e) + 0.5))) :: nil))
          (make_broken_edges e bps)).
 
-Compute no_dup_seq Qeq_bool (path.sort Qlt_bool
+Compute no_dup_seq_aux Qeq_bool (path.sort Qlt_bool
                 (find_all_crossing_points e3 evs12)).
 Compute pre_cross_second_coordinate e3 (1/2).
 Compute e3_1.
 Compute make_broken_edges e3 (find_all_crossing_points e3 evs12).
-Compute add_edge_avoid_cross e3_1 evs12.
+Compute add_edge_avoid_cross evs12 e3_1.
 Compute repair_hit_edge e3 evs12.
 
+Notation edge_eqb := (@edge_eqb Q Qeq_bool edge left_pt right_pt).
 Lemma noc14 :
   let l := List.concat (List.map outgoing evs14) in 
   forallb (fun g => forallb (fun g' => edge_eqb g g' || negb (have_crossing g g')) l) l = true.
