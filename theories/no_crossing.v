@@ -104,7 +104,7 @@ Definition have_crossing (e1 e2 : edge) : bool :=
   else
    (* The two edges are parallel.  They may still touch. *)
    if negb (Qeq_bool 
-             (pue_formula (left_pt e1) (left_pt e2) (right_pt e2)) 0) then
+             (area3 (left_pt e1) (left_pt e2) (right_pt e2)) 0) then
      true
    else
      (Qlt_bool (p_x (left_pt e2)) (p_x (left_pt e1)) &&

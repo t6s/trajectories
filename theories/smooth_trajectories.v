@@ -595,7 +595,7 @@ match fuel with
          Some false
 end.
 
-Definition pue_formula := pue_formula Q Qplus Qminus Qmult.
+Definition area3 := area3 Q Qplus Qminus Qmult.
 
 (* This function verifies that the Bezier curve does pass through the
   door that was initially given has a constraint for the broken line.  This
@@ -636,7 +636,7 @@ match e with
     | bezier p1' p2' p3' =>
       let check_function :=
       if Qlt_bool 0 
-          (pue_formula (apt_val p1') (apt_val p2') (apt_val p3')) then
+          (area3 (apt_val p1') (apt_val p2') (apt_val p3')) then
           check_bezier_ccw
       else
           check_bezier_cw in

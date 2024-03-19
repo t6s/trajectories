@@ -149,24 +149,30 @@ Definition vertical_intersection_point (p : pt) (e : edge) : option pt :=
      (p_y (left_pt e))))
     else None.
 
-Definition pue_formula (p : pt) (a : pt) (b : pt) : R :=
-  let: Bpt p_x p_y := p in
+Section area3_def.
+
+Local Notation "x + y" := (R_add x y).
+Local Notation "x - y" := (R_sub x y).
+Local Notation "x * y" := (R_mul x y).
+
+Definition area3 (a : pt) (b : pt) (c : pt) : R :=
   let: Bpt a_x a_y := a in
   let: Bpt b_x b_y := b in
-  R_sub
-    (R_add (R_sub (R_sub (R_mul b_x p_y) (R_mul p_x b_y))
-                  (R_sub (R_mul a_x p_y) (R_mul p_x a_y)))
-           (R_mul a_x b_y)) 
-    (R_mul b_x a_y).
+  let: Bpt c_x c_y := c in
+    (((c_x * a_y - a_x * c_y) -
+                  (b_x * a_y - a_x * b_y)) +
+           b_x * c_y) - c_x * b_y.
+
+End area3_def.
 
 Definition point_under_edge (p : pt) (e : edge) : bool :=
-  R_leb (pue_formula p (left_pt e) (right_pt e)) R0.
+  R_leb (area3 p (left_pt e) (right_pt e)) R0.
 
 Notation "p >>> g" := (negb (point_under_edge p g))
   (at level 70, no associativity).
 
 Definition point_strictly_under_edge (p : pt) (e : edge) : bool :=
-  R_ltb (pue_formula p (left_pt e) (right_pt e)) R0.
+  R_ltb (area3 p (left_pt e) (right_pt e)) R0.
 
 Notation "p <<< g" := (point_strictly_under_edge p g)
   (at level 70, no associativity).
@@ -999,7 +1005,7 @@ match e with
     | bezier p1' p2' p3' =>
       let check_function :=
       if R_ltb R0 
-          (pue_formula (apt_val p1') (apt_val p2') (apt_val p3')) then
+          (area3 (apt_val p1') (apt_val p2') (apt_val p3')) then
           check_bezier_ccw
       else
           check_bezier_cw in
