@@ -51,7 +51,11 @@ Notation "x - y" := (R_sub x y).
 
 Notation "x + y" := (R_add x y).
 
-Variable R0 R2 : R.
+Variable R1 : R.
+
+Let R0 := R_sub R1 R1.
+
+Let R2 := R_add R1 R1.
 
 Record pt := Bpt {p_x : R; p_y : R}.
 (* In the original development, edge have the data invariant that
@@ -70,7 +74,7 @@ Record event :=
 Record cell := Bcell  {left_pts : list pt; right_pts : list pt;
                         low : edge; high : edge}.
 
-Definition dummy_pt := ({| p_x := R0; p_y := R0|}).
+Definition dummy_pt := ({| p_x := R1; p_y := R1|}).
 
 Definition dummy_edge := Bedge dummy_pt dummy_pt.
 
@@ -155,13 +159,20 @@ Local Notation "x + y" := (R_add x y).
 Local Notation "x - y" := (R_sub x y).
 Local Notation "x * y" := (R_mul x y).
 
-Definition area3 (a : pt) (b : pt) (c : pt) : R :=
+Definition area3' (a : pt) (b : pt) (c : pt) : R :=
   let: Bpt a_x a_y := a in
   let: Bpt b_x b_y := b in
   let: Bpt c_x c_y := c in
     (((c_x * a_y - a_x * c_y) -
                   (b_x * a_y - a_x * b_y)) +
            b_x * c_y) - c_x * b_y.
+
+Definition area3 (a : pt) (b : pt) (c : pt) : R :=
+  let: Bpt a_x a_y := a in
+  let: Bpt b_x b_y := b in
+  let: Bpt c_x c_y := c in
+    b_x * c_y + a_x * b_y + c_x * a_y -
+    b_x * a_y - a_x * c_y - c_x * b_y.
 
 End area3_def.
 
