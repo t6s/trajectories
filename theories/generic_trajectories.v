@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect.
-Require Import ZArith QArith List String OrderedType OrderedTypeEx FMapAVL.
+Require Import ZArith List String OrderedType OrderedTypeEx FMapAVL.
 
 Notation head := seq.head.
 Notation sort := path.sort.
@@ -30,12 +30,13 @@ Notation sort := path.sort.
     the elements of right_pts *)
 
 Notation seq := list.
-(* In the original development Q is replaced by a variable numFieldType. *)
 
 Module natmap := FMapAVL.Make Nat_as_OT.
 
 Section generic_implementation.
 
+(* In the original development R has type numFieldType and the various
+    operations are taken from that structure. *)
 Variable R : Type.
 
 Variables R_eqb R_leb :  R -> R -> bool.
