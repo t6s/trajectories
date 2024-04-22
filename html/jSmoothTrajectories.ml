@@ -83,7 +83,7 @@ let call_smooth s =
     e2n1 :: e2d1 :: e2n2 :: e2d2 :: e2n3 :: e2d3 :: e2n4 :: e2d4 ::
     ls ->
     let es = list2es ls in 
-    let v = smooth_point_to_point (n2edge e1n1 e1d1 e1n2 e1d2 e1n3 e1d3 e1n4 e1d4)
+    let v = qsmooth_point_to_point (n2edge e1n1 e1d1 e1n2 e1d2 e1n3 e1d3 e1n4 e1d4)
       (n2edge e2n1 e2d1 e2n2 e2d2 e2n3 e2d3 e2n4 e2d4)
       es 
       (n2pt p1n1 p1d1 p1n2 p1d2)
@@ -124,7 +124,7 @@ let call_cells s =
     e2n1 :: e2d1 :: e2n2 :: e2d2 :: e2n3 :: e2d3 :: e2n4 :: e2d4 ::
     ls ->
     let es = list2es ls in 
-    let v = edges_to_cells (n2edge e1n1 e1d1 e1n2 e1d2 e1n3 e1d3 e1n4 e1d4)
+    let v = qedges_to_cells (n2edge e1n1 e1d1 e1n2 e1d2 e1n3 e1d3 e1n4 e1d4)
       (n2edge e2n1 e2d1 e2n2 e2d2 e2n3 e2d3 e2n4 e2d4)
       es  in 
     l2stringr (cells_elements2n v)
