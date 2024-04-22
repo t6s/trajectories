@@ -1,3 +1,5 @@
+theories/generic_trajectories.v
+theories/smooth_trajectories.v
 theories/convex.v
 theories/preliminaries.v
 theories/poly_normal.v
