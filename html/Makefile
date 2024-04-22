@@ -6,4 +6,6 @@ Makefile.coq:
 
 run:
 	python3 -m http.server
-	
+
+clean:
+	make -f Makefile.coq clean
