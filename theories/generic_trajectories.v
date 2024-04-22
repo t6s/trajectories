@@ -1023,8 +1023,8 @@ match e with
           check_bezier_ccw
       else
           check_bezier_cw in
-        match (* check_function fuel_constant vedge
-                  (apt_val p1')(apt_val p2')(apt_val p3') *) None with
+        match check_function fuel_constant vedge
+                  (apt_val p1')(apt_val p2')(apt_val p3') with
         | Some true => bezier p1 p2 p3 :: nil
         | _ => 
           match fuel with
