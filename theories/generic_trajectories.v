@@ -993,6 +993,8 @@ end.
   iteration.
   This function may replace a faulty curve element with a sequence of
   three new elements, so all results have to be concatened later. *)
+Definition fuel_constant := 20.
+
 Fixpoint check_curve_element_and_repair
   (fuel : nat) (cells : seq cell) (e : curve_element) :
    seq curve_element :=
@@ -1021,8 +1023,8 @@ match e with
           check_bezier_ccw
       else
           check_bezier_cw in
-        match check_function 20%nat vedge
-                  (apt_val p1')(apt_val p2')(apt_val p3') with
+        match (* check_function fuel_constant vedge
+                  (apt_val p1')(apt_val p2')(apt_val p3') *) None with
         | Some true => bezier p1 p2 p3 :: nil
         | _ => 
           match fuel with
@@ -1050,7 +1052,8 @@ end.
 Definition smooth_from_cells (cells : seq cell)
   (initial final : pt) : seq curve_element :=
   match point_to_point cells initial final with
-  | Some s => List.concat (List.map (check_curve_element_and_repair 20 cells)
+  | Some s => List.concat
+       (List.map (check_curve_element_and_repair fuel_constant cells)
                               (smoothen (break_segments s)))
   | None => nil
   end.
