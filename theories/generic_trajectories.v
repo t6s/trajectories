@@ -554,9 +554,11 @@ Definition vert_edge_to_reference_point (s t : pt) (v : vert_edge) :=
   else if on_vert_edge t v then t
   else vert_edge_midpoint v.
 
+Definition door := (vert_edge * nat * nat)%type.
+
 Definition one_door_neighbors
-  (indexed_doors : seq (nat * (vert_edge * nat * nat)))
-  (i_d : nat * (vert_edge * nat * nat)) : list nat :=
+  (indexed_doors : seq (nat * door))
+  (i_d : nat * door) : list nat :=
   match i_d with
   | (j, (v0, i0, i'0)) =>
     map fst
@@ -577,22 +579,26 @@ Definition strict_inside_closed p c :=
 
 Definition add_extremity_reference_point
   (indexed_cells : seq (nat * cell))
-  (doors : seq (vert_edge * nat * nat)) (p : pt) :=
-  if existsb (fun '(v, _, _) => on_vert_edge p v) doors then
-    [::]
+  (p : pt) (doors : seq door) :=
+  let purported_index :=
+    seq.find (fun '(v, _, _) => on_vert_edge p v) doors in
+  if purported_index < size doors then
+    (doors, purported_index)
   else 
     let '(i, c) :=
       head (size indexed_cells, dummy_cell)
         (filter (fun '(i', c') => strict_inside_closed p c')  indexed_cells) in
-      [:: ({|ve_x := p_x p; ve_top := p_y p; ve_bot := p_y p|}, i, i)].
+      (rcons doors ({|ve_x := p_x p; ve_top := p_y p; ve_bot := p_y p|}, i, i), size doors).
 
 Definition doors_and_extremities (indexed_cells : seq (nat * cell))
-  (doors : seq (vert_edge * nat * nat)) (s t : pt) :=
-  add_extremity_reference_point indexed_cells doors s ++
-  add_extremity_reference_point indexed_cells doors t ++
-  doors.
+  (doors : seq door) (s t : pt) : seq door * nat * nat :=
+  let '(d_s, i_s) := 
+     add_extremity_reference_point indexed_cells s doors in
+  let '(d_t, i_t) :=
+     add_extremity_reference_point indexed_cells t d_s in
+  (d_t, i_s, i_t).
 
-Definition door_adjacency_map (doors : seq (vert_edge * nat * nat)) :
+Definition door_adjacency_map (doors : seq door) :
   seq (seq nat) :=
   let indexed_doors := index_seq doors in
   map (fun i_d => one_door_neighbors indexed_doors i_d) indexed_doors.
@@ -602,7 +608,7 @@ Definition dummy_vert_edge :=
 
 Definition dummy_door := (dummy_vert_edge, 0, 0).
 
-Definition distance (doors : seq (vert_edge * nat * nat)) (s t : pt) 
+Definition distance (doors : seq door) (s t : pt) 
   (i j : nat) :=
   let '(v1, _, _) := seq.nth dummy_door doors i in
   let '(v2, _, _) := seq.nth dummy_door doors j in
@@ -613,13 +619,13 @@ Definition distance (doors : seq (vert_edge * nat * nat)) (s t : pt)
 Definition cells_to_doors_graph (cells : seq cell) (s t : pt) :=
   let regular_doors := cells_to_doors cells in
   let indexed_cells := index_seq cells in
-  let full_seq_of_doors :=
+  let '(full_seq_of_doors, i_s, i_t) :=
     doors_and_extremities indexed_cells regular_doors s t in
   let adj_map := door_adjacency_map full_seq_of_doors in
   let neighbors_and_distances :=
     [seq [seq (j, distance full_seq_of_doors s t i j) | j <- neighbors]
         | '(i, neighbors) <- index_seq adj_map] in
-      (full_seq_of_doors, neighbors_and_distances).
+      (full_seq_of_doors, neighbors_and_distances, i_s, i_t).
 
 Definition node := nat.
 
@@ -666,9 +672,10 @@ Definition pop  (q : priority_queue) :
   end.
 
 Definition c_shortest_path cells s t :=
-  let adj := cells_to_doors_graph cells s t in
-  (adj, shortest_path node node_eqb (seq.nth [::] adj.2) 0%N 1%N _ empty
-   find update pop (iota 0 (size adj.2))).
+  let '(adj, i_s, i_t) := cells_to_doors_graph cells s t in
+  (adj, shortest_path node node_eqb (seq.nth [::] adj.2) i_s
+    i_t _ empty
+   find update pop (iota 0 (size adj.2)), i_s, i_t).
 
 Definition midpoint (p1 p2 : pt) : pt :=
  {| p_x := R_div (R_add (p_x p1) (p_x p2)) R2;
@@ -701,7 +708,7 @@ Definition common_index (s1 s2 : seq nat) :=
   let intersect := intersection s1 s2 in
   seq.head 0 intersect.
 
-Definition door_to_annotated_point s t (d : vert_edge * nat * nat) 
+Definition door_to_annotated_point s t (d : door) 
   (door_index : nat) :=
   let p' := vert_edge_to_reference_point s t d.1.1 in
   let annot :=
@@ -709,7 +716,7 @@ Definition door_to_annotated_point s t (d : vert_edge * nat * nat)
   Apt p' (Some door_index) annot.
 
 Fixpoint a_shortest_path (cells : seq cell)
-  (doors : seq (vert_edge * nat * nat) * seq (seq (nat * R)))
+  (doors : seq door * seq (seq (nat * R)))
   s t (p : annotated_point) (path : seq node) :=
   match path with
   | nil => [:: p]
@@ -738,14 +745,13 @@ Definition path_reverse (s : seq (annotated_point * annotated_point)) :=
 
 Definition source_to_target
  (cells : seq cell) (source target : pt) :
-  option (seq (vert_edge * nat * nat) *
+  option (seq door *
           seq (annotated_point * annotated_point)) :=
-  let main := c_shortest_path cells source target in
-  let doors := main.1 in
-  let opath := main.2 in
+  let '(doors, opath, i_s, i_t) :=
+       c_shortest_path cells source target in
   let last_point := 
      door_to_annotated_point source target
-         (seq.nth dummy_door doors.1 1) 1 in
+         (seq.nth dummy_door doors.1 i_t) i_t in
   if opath is Some path then
     match a_shortest_path cells doors source target
               last_point path with
