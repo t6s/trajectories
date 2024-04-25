@@ -256,8 +256,10 @@ Lemma cnt14 :
 Proof. easy. Qed.
 
 Import String.
+(*
 Compute example_test (List.concat (List.map outgoing evs14))
              (Bpt 1.2 (-0.8)) (Bpt (-1) (0.4)) nil.
+*)
 Compute (concat "
 " (postscript_header ++
    display_edge 300 400 70 example_bottom ::

@@ -81,7 +81,7 @@ Definition dummy_pt := ({| p_x := R1; p_y := R1|}).
 
 Definition dummy_edge := Bedge dummy_pt dummy_pt.
 
-Definition dummy_cell := 
+Definition dummy_cell :=
   {| left_pts := nil; right_pts := nil; low := dummy_edge; high := dummy_edge|}.
 
 Definition dummy_event :=
@@ -148,11 +148,11 @@ Definition valid_edge e p := (R_leb (p_x (left_pt e)) (p_x p)) &&
 (* TODO: check again the mathematical formula after replacing the infix     *)
 (* operations by prefix function calls. *)
 Definition vertical_intersection_point (p : pt) (e : edge) : option pt :=
-  if valid_edge e p then 
+  if valid_edge e p then
     Some(Bpt (p_x p) (R_add
        (R_mul (R_sub (p_x p) (p_x (left_pt e)))
       (R_div (R_sub (p_y (right_pt e)) (p_y (left_pt e)))
-    (R_sub (p_x (right_pt e)) (p_x (left_pt e))))) 
+    (R_sub (p_x (right_pt e)) (p_x (left_pt e)))))
      (p_y (left_pt e))))
     else None.
 
@@ -192,9 +192,9 @@ Notation "p <<< g" := (point_strictly_under_edge p g)
   (at level 70, no associativity).
 
 Definition edge_below (e1 : edge) (e2 : edge) : bool :=
-(point_under_edge (left_pt e1) e2 && 
+(point_under_edge (left_pt e1) e2 &&
  point_under_edge (right_pt e1) e2)
-|| (negb (point_strictly_under_edge (left_pt e2) e1) && 
+|| (negb (point_strictly_under_edge (left_pt e2) e1) &&
    negb (point_strictly_under_edge (right_pt e2) e1)).
 
 Definition contains_point (p : pt) (c : cell)  : bool :=
@@ -204,7 +204,7 @@ Definition close_cell (p : pt) (c : cell) :=
   match vertical_intersection_point p (low c),
         vertical_intersection_point p (high c) with
   | None, _ | _, None => c
-  | Some p1, Some p2 => 
+  | Some p1, Some p2 =>
     Bcell (left_pts c) (no_dup_seq (p1 :: p :: p2 :: nil)) (low c) (high c)
   end.
 
@@ -217,7 +217,7 @@ Definition pvert_y (p : pt) (e : edge) :=
   | None => R0
   end.
 
-Fixpoint opening_cells_aux (p : pt) (out : seq edge) (low_e high_e : edge) 
+Fixpoint opening_cells_aux (p : pt) (out : seq edge) (low_e high_e : edge)
   : seq cell * cell :=
   match out with
   | [::] =>
@@ -251,7 +251,7 @@ if open_cells is c :: q then
 else
   None.
 
-Fixpoint open_cells_decomposition_rec open_cells pt : 
+Fixpoint open_cells_decomposition_rec open_cells pt :
   seq cell * seq cell * cell * seq cell :=
 if open_cells is c :: q then
   if contains_point pt c then
@@ -339,7 +339,7 @@ Definition step (st : scan_state) (e : event) : scan_state :=
    let p := point e in
    let '(Bscan op1 lsto op2 cls cl lhigh lx) := st in
    if negb (same_x p lx) then
-     let '(first_cells, contact_cells, last_contact, last_cells, 
+     let '(first_cells, contact_cells, last_contact, last_cells,
            lower_edge, higher_edge) :=
        open_cells_decomposition (op1 ++ lsto :: op2) p in
      simple_step first_cells contact_cells last_cells last_contact
@@ -351,7 +351,7 @@ Definition step (st : scan_state) (e : event) : scan_state :=
      let first_cells := op1 ++ lsto :: fc' in
      simple_step first_cells contact_cells last_cells last_contact
        low_edge higher_edge cls cl e
-   else if p <<< lhigh then 
+   else if p <<< lhigh then
      let new_closed := update_closed_cell cl (point e) in
      let (new_opens, new_lopen) := update_open_cell lsto e in
      Bscan (op1 ++ new_opens) new_lopen op2 cls new_closed lhigh lx
@@ -440,12 +440,12 @@ Variable node_eqb : node -> node -> bool.
 Variable neighbors_of_node : node -> seq (node * R).
 Variable source target : node.
 
-Definition path := seq node.
+Definition gpath := seq node.
 Variable priority_queue : Type.
 Variable empty : priority_queue.
-Variable find : priority_queue -> node -> option (path * option R).
-Variable update : priority_queue -> node -> path -> option R -> priority_queue.
-Variable pop :  priority_queue -> option (node * path * option R * priority_queue).
+Variable gfind : priority_queue -> node -> option (gpath * option R).
+Variable update : priority_queue -> node -> gpath -> option R -> priority_queue.
+Variable pop :  priority_queue -> option (node * gpath * option R * priority_queue).
 
 Definition cmp_option (v v' : option R) :=
   if v is Some x then
@@ -459,8 +459,8 @@ Definition cmp_option (v v' : option R) :=
 Definition Dijkstra_step (d : node) (p : seq node) (dist : R)
   (q : priority_queue) : priority_queue :=
   let neighbors := neighbors_of_node d in
-  foldr (fun '(d', dist') q => 
-           match find q d' with
+  foldr (fun '(d', dist') q =>
+           match gfind q d' with
            | None => q
            | Some (p', o_dist) =>
              let new_dist_to_d' := Some (R_add dist dist') in
@@ -475,7 +475,7 @@ Fixpoint Dijkstra (fuel : nat) (q : priority_queue) :=
   |S fuel' =>
     match pop q with
     | Some (d, p, Some dist, q') =>
-      if node_eqb d target then Some p else 
+      if node_eqb d target then Some p else
         Dijkstra fuel' (Dijkstra_step d p dist q')
     | _ => None
     end
@@ -516,12 +516,12 @@ end.
 (* Vertical edges are collected from the left_pts and right_pts sequences. *)
 Definition cell_safe_exits_left (c : cell) : seq vert_edge :=
   let lx := p_x (head dummy_pt (left_pts c)) in
-  map (fun p => Build_vert_edge lx (p_y (fst p)) (p_y (snd p))) 
+  map (fun p => Build_vert_edge lx (p_y (fst p)) (p_y (snd p)))
    (seq_to_intervals (left_pts c)).
 
 Definition cell_safe_exits_right (c : cell) : seq vert_edge :=
   let lx := p_x (head dummy_pt (right_pts c)) in
-  map (fun p => Build_vert_edge lx (p_y (fst p)) (p_y (snd p))) 
+  map (fun p => Build_vert_edge lx (p_y (fst p)) (p_y (snd p)))
    (seq_to_intervals (rev (right_pts c))).
 
 Definition index_seq {T : Type} (s : list T) : list (nat * T) :=
@@ -530,16 +530,16 @@ Definition index_seq {T : Type} (s : list T) : list (nat * T) :=
 Definition cells_to_doors (s : list cell) :=
   let indexed_s := index_seq s in
   let vert_edges_and_right_cell :=
-    flatten (map (fun '(i, c) => 
+    flatten (map (fun '(i, c) =>
                    (map (fun v => (v, i))) (cell_safe_exits_left c))
       indexed_s) in
   let vert_edges_and_both_cells :=
-    flatten (map (fun '(v, i) => 
+    flatten (map (fun '(v, i) =>
           (map (fun '(i', c') => (v, i, i'))
                (filter (fun '(i', c') =>
                    existsb (vert_edge_eqb v) (cell_safe_exits_right c'))
                    indexed_s)))
-           vert_edges_and_right_cell) in 
+           vert_edges_and_right_cell) in
       vert_edges_and_both_cells.
 
 Definition on_vert_edge (p : pt) (v : vert_edge) : bool :=
@@ -592,7 +592,7 @@ Definition add_extremity_reference_point
 
 Definition doors_and_extremities (indexed_cells : seq (nat * cell))
   (doors : seq door) (s t : pt) : seq door * nat * nat :=
-  let '(d_s, i_s) := 
+  let '(d_s, i_s) :=
      add_extremity_reference_point indexed_cells s doors in
   let '(d_t, i_t) :=
      add_extremity_reference_point indexed_cells t d_s in
@@ -629,16 +629,16 @@ Definition cells_to_doors_graph (cells : seq cell) (s t : pt) :=
 
 Definition node := nat.
 
-Definition empty := @nil (node * path node * option R).
+Definition empty := @nil (node * gpath node * option R).
 
-Notation priority_queue := (list (node * path node * option R)).
+Notation priority_queue := (list (node * gpath node * option R)).
 
 Definition node_eqb := Nat.eqb.
 
-Fixpoint find (q : priority_queue) n :=
+Fixpoint gfind (q : priority_queue) n :=
   match q with
   | nil => None
-  | (n', p, d) :: tl => if node_eqb n' n then Some (p, d) else find tl n
+  | (n', p, d) :: tl => if node_eqb n' n then Some (p, d) else gfind tl n
   end.
 
 Fixpoint remove (q : priority_queue) n :=
@@ -665,7 +665,7 @@ Definition update q n p d :=
   insert (remove q n) n p d.
 
 Definition pop  (q : priority_queue) :
-   option (node * path node * option R * priority_queue) :=
+   option (node * gpath node * option R * priority_queue) :=
   match q with
   | nil => None
   | v :: tl => Some (v, tl)
@@ -675,7 +675,7 @@ Definition c_shortest_path cells s t :=
   let '(adj, i_s, i_t) := cells_to_doors_graph cells s t in
   (adj, shortest_path node node_eqb (seq.nth [::] adj.2) i_s
     i_t _ empty
-   find update pop (iota 0 (size adj.2)), i_s, i_t).
+   gfind update pop (iota 0 (size adj.2)), i_s, i_t).
 
 Definition midpoint (p1 p2 : pt) : pt :=
  {| p_x := R_div (R_add (p_x p1) (p_x p2)) R2;
@@ -725,7 +725,7 @@ Fixpoint a_shortest_path (cells : seq cell)
     let a_p' := door_to_annotated_point s t d' p'i in
     if R_eqb (p_x (apt_val p)) (p_x (apt_val a_p')) then
        let ci := common_index (cell_indices p) (cell_indices a_p') in
-       let p_extra : annotated_point := 
+       let p_extra : annotated_point :=
          safe_intermediate_point_in_cell (apt_val p) (apt_val a_p')
            (seq.nth dummy_cell cells ci) ci in
        p :: p_extra :: a_shortest_path cells doors s t a_p' tlpath
@@ -749,14 +749,17 @@ Definition source_to_target
           seq (annotated_point * annotated_point)) :=
   let '(doors, opath, i_s, i_t) :=
        c_shortest_path cells source target in
-  let last_point := 
-     door_to_annotated_point source target
-         (seq.nth dummy_door doors.1 i_t) i_t in
-  if opath is Some path then
-    match a_shortest_path cells doors source target
-              last_point path with
-    | nil => None
-    | a :: tl => Some(doors.1, path_reverse (path_to_segments a tl))
+  if Nat.eqb i_s i_t then
+    Some (doors.1, [:: (Apt source None [::], Apt target None [::])])
+  else
+    let last_point :=
+       door_to_annotated_point source target
+           (seq.nth dummy_door doors.1 i_t) i_t in
+    if opath is Some path then
+      match a_shortest_path cells doors source target
+                last_point path with
+      | nil => None
+      | a :: tl => Some(doors.1, path_reverse (path_to_segments a tl))
     end
   else
     None.

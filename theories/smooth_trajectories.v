@@ -31,7 +31,19 @@ Definition scan :=
 Definition manhattan_distance (p1x p1y p2x p2y : R) :=
   Qabs (p2x - p1x) + Qabs (p2y - p1y).
 
-Definition pt_distance := manhattan_distance.
+Definition approx_sqrt (x : Q) :=
+  let n := Qnum x in
+  let d := Qden x in
+  let safe_n := (1024 * n)%Z in
+  let safe_d := (1024 * d)%positive in
+  let n' := Z.sqrt safe_n in
+  let d' := Pos.sqrt safe_d in
+  Qred (Qmake n' d').
+
+Definition euclidean_distance  (p1x p1y p2x p2y : R) :=
+  approx_sqrt ((p2x - p1x) ^ 2 + (p2y - p1y) ^ 2).
+
+Definition pt_distance := euclidean_distance.
 
 Definition Qsmooth_point_to_point :=
  smooth_point_to_point Q Qeq_bool Qle_bool Qplus Qminus Qmult Qdiv
