@@ -444,3 +444,92 @@ function onDocumentMouseDown( event ) {
         renderer.render( scene, camera );
     }
 }
+
+
+document.getElementById('loadButton').addEventListener('click', function() { 
+  let input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'text/*'
+  input.onchange = _ => {
+    // you can use this method to get file and perform respective operations
+            let files =   Array.from(input.files);
+            if (files.length < 1) {
+                return;
+            }
+            let file = files[0];
+            var reader = new FileReader();
+            reader.onload = function(progressEvent) {
+                fromValid = false;         
+                toValid = false;         
+                fromCube.position.y = -0.2;
+                toCube.position.y = -0.2;
+                for (const obstacle of obstacles) {
+                    scene.remove(obstacle.line);
+                }
+                obstacles = [];
+                renderer.render( scene, camera );
+                // Entire file
+                const text = this.result;
+                // By lines
+                var lines = text.split('\n');
+                var i = 0;
+                if (lines[i].indexOf('Obstacles') != -1) {
+                    i++;
+                    while ((i < lines.length) && (lines[i].length != 0) && 
+                           (lines[i].indexOf("Positions") == -1)) {
+                        var fX = parseFloat(lines[i]);
+                        var fZ = parseFloat(lines[i+1]);
+                        var tX = parseFloat(lines[i+2]);
+                        var tZ = parseFloat(lines[i+3]);
+                        addObstacle(fX, fZ, tX, tZ);
+                        i += 4;
+                    }
+                }
+                if (lines[i].indexOf("Positions") != -1) {
+                    document.getElementById('positions').checked = true;
+                    var fX = parseFloat(lines[i+1]);
+                    var fZ = parseFloat(lines[i+2]);
+                    var tX = parseFloat(lines[i+3]);
+                    var tZ = parseFloat(lines[i+4]);
+                    i += 5;
+                    fromValid = true;         
+                    toValid = true;         
+                    fromCube.position.z = fZ;
+                    fromCube.position.y = fromY;
+                    fromCube.position.x = fX;
+                    toCube.position.z = tZ;
+                    toCube.position.y = toY;
+                    toCube.position.x = tX;
+                    renderer.render( scene, camera );
+                    positions = {fX : fX, fZ : fZ, tX : tX, tZ : tZ }
+                    cleanCurve();
+                    getCurve();
+                    renderer.render( scene, camera );
+                }
+            };
+            reader.readAsText(file);
+        };
+   input.click();
+}); 
+
+document.getElementById('saveButton').addEventListener('click', function() { 
+   const link = document.createElement("a");
+   let val = "";
+   if (obstacles.length != 0) {
+        val += "Obstacles\n";
+                for (const obstacle of obstacles) {
+                    val += obstacle.fX + "\n" + obstacle.fZ + "\n" 
+                            + obstacle.tX + "\n"  + obstacle.tZ + "\n";  
+                    } 
+        if (positions != null) {
+                val += "Positions\n";
+                val += positions.fX + "\n" + positions.fZ + "\n";
+                val += positions.tX + "\n" + positions.tZ + "\n";
+        }
+   }
+   const file = new Blob([val], { type: 'text/plain' });
+   link.href = URL.createObjectURL(file);
+   link.download = "sample.txt";
+   link.click();
+   URL.revokeObjectURL(link.href);
+}); 
