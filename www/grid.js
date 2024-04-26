@@ -487,6 +487,7 @@ document.getElementById('loadButton').addEventListener('click', function() {
                 }
                 if (lines[i].indexOf("Positions") != -1) {
                     document.getElementById('positions').checked = true;
+                    setModality();
                     var fX = parseFloat(lines[i+1]);
                     var fZ = parseFloat(lines[i+2]);
                     var tX = parseFloat(lines[i+3]);
