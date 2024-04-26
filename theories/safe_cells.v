@@ -201,8 +201,8 @@ do 5 move=> /andP[] _.
 move=> /andP[] rn0 /andP[] rsx /andP[] srt /andP[] _ lon.
 have p'q : p' = last dummy_pt (right_pts c).
   have := on_edge_same_point p'on lon.
-  rewrite (allP rsx _ pin)=> /(_ isT)=> samey.
-  by apply/(@eqP pt); rewrite pt_eqE samey (allP rsx _ pin).
+  have /eqP -> := allP rsx _ pin => /(_ erefl) samey.
+  by apply/(@eqP pt); rewrite pt_eqE samey (allP rsx _ pin)/=; exact/eqP.
 move: rn0 p'q pin srt.
 elim/last_ind: (right_pts c) => [| rpts p2 Ih] // _ p'q pin srt.
 move: pin; rewrite mem_rcons inE => /orP[/eqP -> | pin].
@@ -243,9 +243,9 @@ move=> /andP[] ln0 /andP[] lsx /andP[] srt /andP[] hon _.
 have p'q : p' = head dummy_pt (left_pts c).
   have := on_edge_same_point p'on hon.
   rewrite (eqP (allP lsx _ pin)).
-  rewrite (x_left_pts_left_limit cok (head_in_not_nil _ ln0)) eqxx.
-  move=> /(_ isT)=> samey.
-  apply/(@eqP pt); rewrite pt_eqE samey andbT.
+  rewrite (x_left_pts_left_limit cok (head_in_not_nil _ ln0)).
+  move=> /(_ erefl) samey.
+  apply/(@eqP pt); rewrite pt_eqE samey eqxx andbT.
   rewrite (eqP (allP lsx _ pin)) eq_sym.
   by rewrite (allP lsx _ (head_in_not_nil _ ln0)).
 move: ln0 p'q pin srt.
@@ -275,10 +275,10 @@ have : left_limit pc1 <= p_x p.
   by move:(pong)=> /andP[] _ /andP[]; rewrite lpcc.
 rewrite le_eqVlt=> /orP[ /eqP pxq | ].
   have plg : p = left_pt g.
-    move: lpcc; rewrite /= pxq=> /eqP samex.
+    move: lpcc; rewrite /= pxq=> samex.
     have := on_edge_same_point pong (left_on_edge _).
-    rewrite samex=> /(_ isT) samey.
-    by apply/(@eqP pt); rewrite pt_eqE samex samey.
+    rewrite samex=> /(_ erefl) samey.
+    by apply/(@eqP pt); rewrite pt_eqE samex samey !eqxx.
   have pin : p \in points.
     apply: obstacles_point_in; rewrite mem_cat; apply/orP; left.
     by rewrite plg map_f.
@@ -306,7 +306,7 @@ rewrite le_eqVlt=> /orP[ /eqP pxq | ].
   by rewrite prlq le_refl andbT (non_empty_closed ccl').
 elim: pcc pc1 pcccl highs conn rpcc {lpcc pccn0} =>
   [ | pc2 pcc Ih] pc1 pcccl highs conn rpcc pc1lp.
-  have pc1cl : pc1 \in closed by apply: pcccl; rewrite inE eqxx.  
+  have pc1cl : pc1 \in closed by apply: pcccl; rewrite inE eqxx.
   have hpc1 : high pc1 = g by apply: (highs _ (mem_head _ _)).
   move: rpcc; rewrite /last_cell/= => rpc1.
   have vgp : valid_edge g p by move: pong=> /andP[].
@@ -334,9 +334,10 @@ elim: pcc pc1 pcccl highs conn rpcc {lpcc pccn0} =>
     noc1 (closed_ok pc1cl) _ ponh; apply.
     rewrite pc1lp /= rpc1.
     move: (pong)=> /andP[] _ /andP[] _; rewrite le_eqVlt=> /orP[]; last by [].
-    move=> abs.
+    move=> /eqP abs.
     move: pnr=> /negP[]; rewrite pt_eqE abs /=.
-    by have := on_edge_same_point pong (right_on_edge _) abs.
+    rewrite (on_edge_same_point pong (right_on_edge _)) -abs//.
+    by rewrite !eqxx.
   have vph1 : valid_edge (high pc1) p by move: ponh=> /andP[].
   have [cqc' | ] := disj_closed ccl pc1cl.
     by move: puh; rewrite strict_nonAunder cqc' // ponh.

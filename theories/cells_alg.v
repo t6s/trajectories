@@ -1840,14 +1840,14 @@ case lptsq : (left_pts lsto) => [ | p1 [ | p2 lpts]] //.
   by move: lstok; rewrite /open_cell_side_limit_ok lptsq.
 have /andP[p1onh p1onl] : (p1 === high lsto) && (p1 === low lsto).
   by move: lstok; rewrite /open_cell_side_limit_ok /left_limit lptsq /= eqxx /=.
-have /eqP samex : p_x (point e) = p_x p1.
+have samex : p_x (point e) = p_x p1.
   by have := pxhere; rewrite lstxq /left_limit lptsq /=.
 suff : p_y (point e) < p_y (point e) by rewrite lt_irreflexive.
-have := same_pvert_y vho samex. 
-rewrite (on_pvert p1onh). 
+have := same_pvert_y vho samex.
+rewrite (on_pvert p1onh).
 have := under_pvert_y vho; move: (puh)=> /[swap] -> /[swap] ->.
 move=> /le_lt_trans; apply.
-have := under_pvert_y vlo; move: (pal) => /[swap] ->.  
+have := under_pvert_y vlo; move: (pal) => /[swap] ->.
 rewrite (same_pvert_y vlo samex).
 by rewrite -ltNge (on_pvert p1onl).
 Qed.
@@ -1973,13 +1973,13 @@ move=> /andP[] /andP[] /[dup] /eqP p1x -> /andP[] -> ->.
 move=> /andP[] /andP[] -> -> /andP[] p1on ->.
 rewrite /= !andbT.
 have p1e : p1 = (point e).
-  have /eqP samex : p_x (point e) = p_x p1.
+  have samex : p_x (point e) = p_x p1.
     by have := pxhere; rewrite lstxq /left_limit lptsq /= p1x.
-  have /eqP samey : p_y (point e) = p_y p1.
+  have samey : p_y (point e) = p_y p1.
     have eonlsthe' : point e === high lsto.
       by apply: under_above_on=> //; rewrite -lstheq // ?underW.
-    by have /eqP := on_edge_same_point eonlsthe' p1on samex.
-  by apply/esym/(@eqP pt); rewrite pt_eqE samex samey.
+    exact: (on_edge_same_point eonlsthe' p1on samex).
+  by apply/esym/(@eqP pt); rewrite pt_eqE samex samey !eqxx.
 rewrite p1e /generic_trajectories.pvert_y subrr -strict_under_pvert_y //.
 by rewrite puh -pxe pvert_on.
 Qed.
@@ -2385,7 +2385,7 @@ Lemma lexPt_left_pt_strict_under_edge_to_p_x (pt : pt) g:
   p_x (left_pt g) < p_x pt.
 Proof.
 move=> vg.
-rewrite /lexPt eq_sym=> /orP[ | /andP[] samex]; first by [].
+rewrite /lexPt eq_sym=> /orP[ | /andP[] /eqP samex]; first by [].
 have := same_pvert_y vg samex.
 rewrite (on_pvert (left_on_edge g))=> <-.
 rewrite ltNge le_eqVlt negb_or andbC.
@@ -2493,7 +2493,7 @@ rewrite inE => /orP[/eqP -> | ].
     have [_ /= ] := adjacent_opening_aux vle vhe oute3 oca_eq => ->.
     rewrite /=.
     move=> /on_edge_same_point /[apply] /=.
-    rewrite xcond /left_limit lptsq /= eqxx => /(_ isT) /eqP ->.
+    rewrite xcond /left_limit lptsq /= => /(_ erefl) ->.
     by apply/(@eqP pt); rewrite pt_eqE /= !eqxx.
   by [].
 move=> c1in; exists c1; first by rewrite inE c1in orbT.
@@ -3821,7 +3821,7 @@ have vhe : valid_edge lsthe (point e).
   move: (allP sval lsto); rewrite /open mem_cat inE eqxx !orbT.
   by move=> /(_ isT)=> /andP[]; rewrite lstheq.
 move: puh; rewrite under_pvert_y //.
-move: (samex)=> /esym/eqP=> samex'.
+move: (samex)=> /esym samex'.
 rewrite (same_pvert_y vhe samex').
 by rewrite (on_pvert (left_on_edge _)) leNgt lty.
 Qed.
@@ -4390,13 +4390,13 @@ have [yle | yabove] := lerP (p_y pt') (p_y (point e)).
       by apply: valid_edge_extremities; rewrite (oute lco).
     move: pin => /andP[] + _; rewrite under_pvert_y; last first.
       by move: vlce; rewrite /valid_edge/generic_trajectories.valid_edge ppe.
-    rewrite -(same_pvert_y vlce); last by apply/eqP.
+    rewrite -(same_pvert_y vlce)//.
     by rewrite on_pvert ?yle // -(eqP (oute lco)) // left_on_edge.
   have plec : contains_point' pt' lec.
     rewrite /contains_point' -leq pale.
     rewrite under_pvert_y //.
     apply: (le_trans yle).
-    rewrite -(same_pvert_y vhlece); last by apply/eqP.
+    rewrite -(same_pvert_y vhlece)//.
     rewrite -under_pvert_y //.
     case ccq': cc => [ | cc0 ccs].
       by move: ccq; rewrite ccq' /= => -[] <- _; rewrite -heq; apply/underW.
@@ -4443,8 +4443,7 @@ have plcc : contains_point' pt' lcc.
       by apply: valid_edge_extremities; rewrite (oute hco).
     move: (pin) => /andP[] _; rewrite under_pvert_y; last first.
       by move: vhce; rewrite /valid_edge/generic_trajectories.valid_edge ppe.
-    rewrite -(same_pvert_y vhce); last by apply/eqP.
-    rewrite on_pvert; last first.
+    rewrite -(same_pvert_y vhce)// on_pvert; last first.
       by rewrite -(eqP (oute hco)) // left_on_edge.
     move=> ple.
     have ppe': p_y pt' = p_y (point e).
@@ -4457,9 +4456,8 @@ have plcc : contains_point' pt' lcc.
   have vllccp : valid_edge (low lcc) pt'.
     by move: vllcce; rewrite /valid_edge/generic_trajectories.valid_edge ppe.
   rewrite under_pvert_y // -?ltNge.
-  apply: le_lt_trans yabove.  
-  rewrite -(same_pvert_y vllcce); last by apply/eqP.
-  rewrite leNgt -strict_under_pvert_y //.
+  apply: le_lt_trans yabove.
+  rewrite -(same_pvert_y vllcce)// leNgt -strict_under_pvert_y //.
   by have /andP[] := lcc_ctn.
 have [/eqP lbnd' | safe] := boolP(left_limit lcc == p_x pt').
   rewrite closeeq has_cat /= orbA.
@@ -4761,7 +4759,7 @@ have /andP [vlcc vhcc] : valid_edge (low lcc) (point e) &&
 have := right_limit_close_cell vlcc vhcc.
 rewrite /in_safe_side_right.
 move=> ->.
-have [samex /= | ] := boolP (p_x pp == p_x (point e)); last by [].
+have [/eqP samex /= | ] := boolP (p_x pp == p_x (point e)); last by [].
 have [-> -> _] := close_cell_preserve_3sides (point e) lcc.
 rewrite -heq.
 have eonllcc : (point e) === low lcc.
@@ -4772,10 +4770,8 @@ have eonllcc : (point e) === low lcc.
   move=> + /(_ cc2) =>/[swap] /[apply].
   move: adj; rewrite ocd ccq cat_rcons; do 2 move =>/adjacent_catW[] _.
   by move=> /= /andP[] /eqP ->.
-have vppl : valid_edge (low lcc) pp.
-  by rewrite (same_x_valid _ samex).
-have vpphe : valid_edge he pp.
-  by rewrite (same_x_valid _ samex).
+have vppl : valid_edge (low lcc) pp by rewrite (same_x_valid _ samex).
+have vpphe : valid_edge he pp by rewrite (same_x_valid _ samex).
 rewrite (under_pvert_y vppl) (same_pvert_y vppl samex) -ltNge.
 rewrite (on_pvert eonllcc).
 rewrite (andbC _ (pp <<< he)).
@@ -4813,17 +4809,15 @@ have /andP [vlcc1 vhcc1] : valid_edge (low cc1) (point e) &&
 have := right_limit_close_cell vlcc1 vhcc1.
 rewrite /in_safe_side_right.
 move=> ->.
-have [samex /= | ] := boolP (p_x pp == p_x (point e)); last by [].
+have [/eqP samex /= | ] := boolP (p_x pp == p_x (point e)); last by [].
 have [-> -> _] := close_cell_preserve_3sides (point e) cc1.
 rewrite -leq.
 have eonhcc1 : (point e) === high cc1.
   have := open_cells_decomposition_point_on cbtom adj
             (inside_box_between inbox_e) sval oe.
   by move=> /(_ cc1 (mem_head _ _)).
-have vpph : valid_edge (high cc1) pp.
-  by rewrite (same_x_valid _ samex).
-have vpple : valid_edge le pp.
-  by rewrite (same_x_valid _ samex).
+have vpph : valid_edge (high cc1) pp by rewrite (same_x_valid _ samex).
+have vpple : valid_edge le pp by rewrite (same_x_valid _ samex).
 rewrite (strict_under_pvert_y vpph) (same_pvert_y vpph samex).
 rewrite (on_pvert eonhcc1).
 have [ppue /= | ] := boolP (p_y pp < p_y (point e)); last by [].
@@ -4868,11 +4862,9 @@ have eonl : point e === low c'.
   by apply: allon; rewrite ccq -cat_cons mem_cat mem_last.
 rewrite /in_safe_side_right cq=> ->.
 have [-> -> _] := close_cell_preserve_3sides (point e) c'.
-have [samex /= | ] := boolP (p_x pp == p_x (point e)); last by [].
-have vpph : valid_edge (high c') pp.
-  by rewrite (same_x_valid _ samex).
-have vppl : valid_edge (low c') pp.
-  by rewrite (same_x_valid _ samex).
+have [/eqP samex /= | ] := boolP (p_x pp == p_x (point e)); last by [].
+have vpph : valid_edge (high c') pp by rewrite (same_x_valid _ samex).
+have vppl : valid_edge (low c') pp by rewrite (same_x_valid _ samex).
 rewrite (strict_under_pvert_y vpph) (same_pvert_y vpph samex).
 rewrite (on_pvert eonh).
 rewrite (under_pvert_y vppl) (same_pvert_y vppl samex).
@@ -4914,7 +4906,7 @@ have [ppe | ppne] := eqVneq (pp : pt) (point e).
 have := right_limit_close_cell vllcc vhlcc.
 rewrite /in_safe_side_right.
 move=> ->.
-have [samex /= | ] := boolP (p_x pp == p_x (point e)); last by [].
+have [/eqP samex /= | ] := boolP (p_x pp == p_x (point e)); last by [].
 have [-> -> _] := close_cell_preserve_3sides (point e) lcc.
 rewrite -heq -leq.
 have puhy : p_y (point e) < pvert_y (point e) he.
@@ -4942,9 +4934,9 @@ have [pu | ] := ltrP (p_y pp) (p_y (point e)).
     apply/negbTE; move: (ppuhe).
     rewrite (strict_under_pvert_y vpphe) lt_neqAle=> /andP[] + _.
     by rewrite (same_pvert_y vpphe samex).
-  by rewrite ppaly ppuhy ppuhe.
+  by rewrite ppaly ppuhy ppuhe !eqxx.
 rewrite le_eqVlt => /orP[samey | /[dup] pa ->].
-   by case/negP: ppne; rewrite pt_eqE samex eq_sym samey.
+   by case/negP: ppne; rewrite pt_eqE samex eq_sym samey !eqxx.
 rewrite andbF andbT /=.
 have [ppuhe /= | ] := boolP (pp <<< he); last by [].
 
@@ -4961,7 +4953,7 @@ have ppuhy : (p_y pp == pvert_y (point e) he) = false.
   apply/negbTE; move: (ppuhe).
   rewrite (strict_under_pvert_y vpphe) lt_neqAle=> /andP[] + _.
   by rewrite (same_pvert_y vpphe samex).
-by rewrite ppale ppuhy ppaly.
+by rewrite ppale ppuhy ppaly !eqxx.
 Qed.
 
 Lemma sides_equiv fc cc lcc lc le he:
@@ -6115,10 +6107,9 @@ have safe_cl : {in events_to_edges [:: ev] & [:: close_cell (point ev) op0],
   rewrite right_limit_close_cell // => /eqP samex.
   move/negP;apply.
   suff -> : p = point ev by rewrite close_cell_in.
-  apply /(@eqP pt); rewrite pt_eqE samex eqxx.
-  apply: (on_edge_same_point pong).
-    by rewrite -lgq left_on_edge.
-  by apply/eqP.
+  apply/eqP; rewrite pt_eqE samex eqxx/=; apply/eqP.
+  apply: (on_edge_same_point pong) => //.
+  by rewrite -lgq left_on_edge.
 have safe_op : {in events_to_edges [:: ev] & nos ++ [:: lno],
           forall g c p, in_safe_side_left p c -> ~ p === g}.
   move=> g c gin cin p pin pong.
@@ -6130,12 +6121,12 @@ have safe_op : {in events_to_edges [:: ev] & nos ++ [:: lno],
   move: pin=> /andP[] + /andP[] _ /andP[] _.
   have := opening_cells_left oute vb0 vt0.
   have := opening_cells_in vb0 vt0 oute.
-  rewrite /opening_cells oca_eq=> /(_ _ cin) evin /(_ _ cin) -> samex.
+  rewrite /opening_cells oca_eq=> /(_ _ cin) evin /(_ _ cin) -> /eqP samex.
   move/negP; apply.
   suff -> : p = point ev.
     by apply: (opening_cells_in vb0 vt0 oute); rewrite /opening_cells oca_eq.
-  apply/(@eqP pt); rewrite pt_eqE samex /=.
-  by apply: (on_edge_same_point pong eong samex).
+  apply/eqP; rewrite pt_eqE samex eqxx/=; apply/eqP.
+  apply: (on_edge_same_point pong eong samex) => //.
 have cl_no_event : {in [:: ev] & [:: close_cell (point ev) op0],
   forall e c (p : pt), in_safe_side_left p c || in_safe_side_right p c ->
        p != point e}.
@@ -6515,13 +6506,13 @@ have cl_safe_edge :
     move=> /oute /eqP lgq /andP[] _ /andP[]; rewrite lgq leNgt=> /negP[].
     by rewrite (eqP pl); apply: lolt; rewrite // inE eqxx.
   have vc' : valid_cell c' (point ev) by apply/andP/(allP sval).
-  have samex : p_x p == p_x (point ev).
+  have /eqP samex : p_x p == p_x (point ev).
     by move: pin=> /andP[] + _; rewrite close_cell_right_limit.
   move: gin; rewrite mem_cat=> /orP[gin | /oute/eqP lgq ]; last first.
     have peg : point ev === g by rewrite -lgq left_on_edge.
     move=> pong.
-    have samey := on_edge_same_point pong peg samex.
-    have pev : p = point ev by apply/eqP; rewrite pt_eqE samex samey.
+    have /eqP samey := on_edge_same_point pong peg samex.
+    have pev : p = point ev by apply/eqP; rewrite pt_eqE samex samey eqxx.
     have := not_safe_event (close_cell (point ev) c').
     rewrite -[e in in_safe_side_right e _]pev pin orbT.
     by rewrite /closing_cells -map_rcons map_f // => /(_ isT).
@@ -6530,8 +6521,7 @@ have cl_safe_edge :
     move=> [[ | pcc0 pcc] []]; first by []. 
     move=> _ /= [pccsub [pcchigh [_ [_ rlpcc]]]] /andP[] _ /andP[] _.
     rewrite leNgt=> /negP; apply.
-    rewrite (eqP samex).
-    rewrite -rlpcc; apply:rl; last by rewrite inE eqxx.
+    rewrite samex -rlpcc; apply:rl; last by rewrite inE eqxx.
     by apply/pccsub; rewrite /last_cell /= mem_last.
   move=> [] opc [] pcc [] _ [] opch [] _ [] opco _ abs.
   have [vlc'p vhc'p] : valid_edge (low c') p /\ valid_edge (high c') p.
@@ -6563,9 +6553,9 @@ have cl_safe_edge :
     move=> /(_ p) + ; move=>/negP.
     rewrite inside_open'E stricter valid_open_limit //.
     move: cnt; rewrite contains_pointE=> /andP[] _ ->.
-    rewrite (eqP samex) lolt //=; last by rewrite inE eqxx.
+    rewrite samex lolt //=; last by rewrite inE eqxx.
     rewrite inside_open'E (underW puhc') palc' valid_open_limit //.
-    by rewrite (eqP samex) lolt // inE eqxx.
+    by rewrite samex lolt // inE eqxx.
   move=> ponl.
   have vbp : valid_edge bottom p.
     by rewrite (same_x_valid _ samex) (inside_box_valid_bottom inbox_e).
@@ -6597,7 +6587,7 @@ have cl_safe_edge :
   have opcok : open_cell_side_limit_ok opc by apply: (allP (sides_ok c_inv)).
   move=> /(_ _ ponl ponh); rewrite !inE=> /orP[/eqP pleft | /eqP].
     have : left_limit opc < p_x p.
-      by rewrite (eqP samex); apply: lolt; rewrite // inE eqxx.
+      by rewrite samex; apply: lolt; rewrite // inE eqxx.
     have := left_limit_max opcok.
     have [_ | ] := lerP (p_x (left_pt (high opc)))(p_x (left_pt (low opc))).
       by move=> /le_lt_trans /[apply]; rewrite pleft lt_irreflexive.
@@ -6631,7 +6621,7 @@ have cl_safe_edge :
     have /andP[_ /=]:= general_pos c_inv.
   rewrite path_sortedE; last by move=> ? ? ?; apply: lt_trans.
   move=> /andP[] /allP /(_ e2 e2in).
-  by rewrite -pe2 -prl (eqP samex) lt_irreflexive.
+  by rewrite -pe2 -prl samex ltxx.
 have op_safe_edge :
   {in events_to_edges (rcons p_set ev) & state_open_seq rstate,
     forall g c p, in_safe_side_left p c -> ~ p === g}.

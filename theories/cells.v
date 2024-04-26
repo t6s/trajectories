@@ -124,7 +124,7 @@ Lemma inside_open'E p c :
    p_x p <= open_limit c].
 Proof.
 rewrite /inside_open' /inside_open_cell contains_pointE.
-rewrite /point_strictly_under_edge strictE -leNgt !le_eqVlt.
+rewrite strictE -leNgt !le_eqVlt.
 rewrite [in _ >>> low c]/point_under_edge -ltNge subrr.
 by case: (0 < _); case: (_ < p_x p); rewrite ?andbF ?orbT ?andbT.
 Qed.
@@ -141,7 +141,6 @@ Lemma inside_closed'E p c :
      p_x p <= right_limit c].
 Proof.
 rewrite /inside_closed' /inside_closed_cell contains_pointE.
-rewrite /point_strictly_under_edge.
 rewrite strictE -leNgt !le_eqVlt.
 rewrite [in _ >>> low c]/point_under_edge -ltNge subrr.
 by case: (0 < _); case: (_ < p_x p); rewrite ?andbF ?orbT ?andbT.
@@ -374,15 +373,14 @@ Proof.
 rewrite contains_pointE /event_close_edge .
 move =>  rf val [/eqP rlc | /eqP rhc].
 move : rf val.
-  rewrite /point_strictly_under_edge !strictE -rlc {rlc e}.
-  have := (area3_two_points (right_pt (low c)) (left_pt (low c))) => [][] _ [] /eqP -> _ .
-  rewrite lt_irreflexive /=.
-  rewrite /edge_below.
+  rewrite !strictE -rlc {rlc e}.
+  have := area3_two_points (right_pt (low c)) (left_pt (low c)) => [][] _ [] -> _.
+  rewrite ltxx /= /edge_below.
   move => /orP [] /andP [] //= => pablhlow pabrhlow [] _ validrlhigh.
   apply: not_strictly_above pablhlow pabrhlow validrlhigh.
   move : rf val.
-rewrite /point_under_edge underE -rhc {rhc}.
-have := (area3_two_points (right_pt (high c)) (left_pt (high c))) => [] [] _ [] /eqP -> _ /=.
+rewrite underE -rhc {rhc}.
+have := area3_two_points (right_pt (high c)) (left_pt (high c)) => [] [] _ [] -> _ /=.
 rewrite le_refl /edge_below /= andbT=> /orP [] /andP [] //= => pablhlow pabrhlow [] valrhlow _ .
 apply : not_strictly_under pablhlow pabrhlow valrhlow.
 Qed.
@@ -430,18 +428,19 @@ set e2 := @Bedge R (Bpt 0 2) (Bpt 1 1) ltr01.
 set p := (Bpt 3%:R 0).
 set c := Bcell [::] [::] e1 e2.
 have exrf : s_right_form [:: c].
-  rewrite /= /= /e1 /e2 /edge_below /= /point_under_edge !underE /=.
-  rewrite /point_strictly_under_edge  !strictE /=.
+  rewrite /= andbT /e1 /e2 /edge_below /=.
+  rewrite /generic_trajectories.point_under_edge !underE /=.
+  rewrite /generic_trajectories.point_under_edge !strictE /=.
   rewrite !(mul0r, subrr, mul1r, subr0, add0r, addr0, oppr0, opprK, addrK).
   rewrite le_refl lt_irreflexive /= !andbT.
   rewrite -[X in X - 2%:R]/(1%:R) -opprB -natrB //  -[(2-1)%N]/1%N.
   by rewrite lerN10.
 have plow : p <<< low (head dummy_cell [:: c]).
-  rewrite /point_strictly_under_edge strictE /=.
+  rewrite strictE /=.
   by rewrite !(mul0r, subrr, mul1r, subr0, add0r, addr0, oppr0, opprK) ltrN10.
 have := abs [::c] p isT isT exrf  plow c.
 rewrite inE=> /(_ (eqxx _))=> [][] _.
-rewrite /point_strictly_under_edge strictE /=.
+rewrite strictE /=.
 rewrite
   !(mul0r, subrr, mul1r, subr0, add0r, addr0, oppr0, opprK, mulr1, addrK).
 rewrite -natrM -!natrB // -[X in X%:R]/(1%N).

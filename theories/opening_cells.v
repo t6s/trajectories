@@ -961,7 +961,7 @@ have lnoin : lno \in opening_cells (point e) (outgoing e) le he.
   by rewrite oeq mem_rcons mem_head.
 rewrite /in_safe_side_left.
 have := opening_cells_left oute vle vhe lnoin=> ->.
-have [samex /= | ] := boolP (p_x pp == p_x (point e)); last by [].
+have [/eqP samex /= | ] := boolP (p_x pp == p_x (point e)); last by [].
 have highlno : high lno = he.
   by have := opening_cells_aux_high_last vle vhe oute'; rewrite oca_eq.
 rewrite highlno [in RHS]andbC.
@@ -985,7 +985,7 @@ have /oute lfnoq : high (last fno nos') \in outgoing e.
 rewrite ?mem_head // last_rcons inE map_rcons mem_rcons mem_head orbT.
 have eonl : point e === low lno by rewrite llnoq -(eqP lfnoq) left_on_edge.
 have ppal : (pp >>> low lno) = (p_y (point e) < p_y pp).
-  have := under_edge_lower_y (eqP samex) eonl => ->.
+  have := under_edge_lower_y samex eonl => ->.
   by rewrite -ltNge.
 rewrite ppal.
 have := opening_cells_last_left_pts vle vhe oute ogn0 puh.
@@ -1024,7 +1024,7 @@ rewrite -[pt_eqb _ _ _ _]/(_ == _ :> pt).
 case: ifP=> // samept.
 have := pvert_on vle; rewrite -(eqP samept) => onle.
 have /andP[/eqP pf _] := onle.
-by move: pal; rewrite /point_under_edge underE pf le_eqVlt eqxx.
+by move: pal; rewrite underE pf le_eqVlt eqxx.
 Qed.
 
 Lemma first_opening_cells_side_char e le he pp fno nos lno :
@@ -1048,7 +1048,7 @@ have fnoin : fno \in opening_cells (point e) (outgoing e) le he.
   by rewrite oeq mem_rcons !inE eqxx orbT.
 rewrite /in_safe_side_left.
 have := opening_cells_left oute vle vhe fnoin=> ->.
-have [samex /= | ] := boolP (p_x pp == p_x (point e)); last by [].
+have [/eqP samex /= | ] := boolP (p_x pp == p_x (point e)); last by [].
 have lowfno : low fno = le.
   by rewrite (lower_edge_new_cells vle vhe oeq).
 rewrite lowfno.
@@ -1063,7 +1063,7 @@ have /oute hfnoq : high fno \in outgoing e.
   by rewrite mem_head.
 have eonh : point e === high fno by rewrite -(eqP hfnoq) left_on_edge.
 have ppue : (pp <<< high fno) = (p_y pp < p_y (point e)).
-  by have := strict_under_edge_lower_y (eqP samex) eonh.
+  by have := strict_under_edge_lower_y samex eonh.
 rewrite ppue.
 have := opening_cells_first_left_pts he vle ogn0 pal.
 rewrite oca_eq /= => ->.
@@ -1147,7 +1147,7 @@ rewrite (pvertE vle) (pvertE vhe) /= orbF.
 set c := Bcell _ _ _ _.
 move=> /(_ _ (mem_head _ _)).
 rewrite /in_safe_side_left /= => ->.
-have [samex /= | ] := boolP (p_x pp == p_x (point e)); last by [].
+have [/eqP samex /= | ] := boolP (p_x pp == p_x (point e)); last by [].
 rewrite andbCA.
 have puhy : p_y (point e) < pvert_y (point e) he.
   by rewrite -(strict_under_pvert_y vhe).
@@ -1161,8 +1161,8 @@ have vpple : valid_edge le pp by rewrite (same_x_valid _ samex).
 have vpphe : valid_edge he pp by rewrite (same_x_valid _ samex).
 
 have [ | pa] := lerP (p_y pp) (p_y (point e)); rewrite ?(andbF, orbF).
-  rewrite le_eqVlt => /orP[samey | /[dup] pu ->].
-    by case/negP: ppne; rewrite pt_eqE samex samey.
+  rewrite le_eqVlt => /orP[/eqP samey | /[dup] pu ->].
+    by case/negP: ppne; rewrite pt_eqE samex samey !eqxx.
   have [ppale | _] := boolP (pp >>> le); last by [].
   have -> : pp <<< he.
     rewrite (strict_under_pvert_y vpphe).
@@ -1248,7 +1248,7 @@ Lemma half_between_edges (g1 g2 : edge) p :
   (Bpt (p_x p) ((pvert_y p g1 + pvert_y p g2) / 2)) <<< g2.
 Proof.
 move=> vg1 vg2 pal puh; set p1 := Bpt _ _.
-have samex : p_x p1 == p_x p by rewrite eqxx.
+have samex : p_x p1 = p_x p by [].
 have v1g1 : valid_edge g1 p1 by rewrite (same_x_valid _ samex).
 have v1g2 : valid_edge g2 p1 by rewrite (same_x_valid _ samex).
 rewrite (under_pvert_y v1g1) (strict_under_pvert_y v1g2) -ltNge; apply/andP.
@@ -1392,4 +1392,3 @@ End opening_cells.
 End proof_environment.
 
 End working_environment.
-
