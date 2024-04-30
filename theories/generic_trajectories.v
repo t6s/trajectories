@@ -1,5 +1,6 @@
 From mathcomp Require Import all_ssreflect.
 Require Import ZArith (* List *) String OrderedType OrderedTypeEx FMapAVL.
+Require Import shortest_path.
 
 Notation head := seq.head.
 Notation sort := path.sort.
@@ -432,63 +433,6 @@ Definition edges_to_cells bottom top edges :=
 (* To compute a path that has reasonable optimzation, we compute a shortest *)
 (* path between reference points chosen inside doors. *)
 
-Section shortest_path.
-
-Variable cell : Type.
-Variable node : Type.
-Variable node_eqb : node -> node -> bool.
-Variable neighbors_of_node : node -> seq (node * R).
-Variable source target : node.
-
-Definition gpath := seq node.
-Variable priority_queue : Type.
-Variable empty : priority_queue.
-Variable gfind : priority_queue -> node -> option (gpath * option R).
-Variable update : priority_queue -> node -> gpath -> option R -> priority_queue.
-Variable pop :  priority_queue -> option (node * gpath * option R * priority_queue).
-
-Definition cmp_option (v v' : option R) :=
-  if v is Some x then
-    if v' is Some y then
-       (R_ltb x y)%O
-    else
-      true
-   else
-     false.
-
-Definition Dijkstra_step (d : node) (p : seq node) (dist : R)
-  (q : priority_queue) : priority_queue :=
-  let neighbors := neighbors_of_node d in
-  foldr (fun '(d', dist') q =>
-           match gfind q d' with
-           | None => q
-           | Some (p', o_dist) =>
-             let new_dist_to_d' := Some (R_add dist dist') in
-             if cmp_option new_dist_to_d' o_dist then
-                update q d' (d :: p) new_dist_to_d'
-             else q
-           end) q neighbors.
-
-Fixpoint Dijkstra (fuel : nat) (q : priority_queue) :=
-  match fuel with
-  | 0%nat => None
-  |S fuel' =>
-    match pop q with
-    | Some (d, p, Some dist, q') =>
-      if node_eqb d target then Some p else
-        Dijkstra fuel' (Dijkstra_step d p dist q')
-    | _ => None
-    end
-  end.
-
-Definition shortest_path (s : seq node) :=
-  Dijkstra (size s)
-    (update (foldr [fun n q => update q n [::] None] empty s)
-        source [::] (Some R0)).
-
-End shortest_path.
-
-
 (* defining the connection relation between adjacent cells.  Two cells
   are adjacent when it is possible to move from one cell directly to the
   other without colliding an obstacle edge.  In the data structure, it means
@@ -501,6 +445,9 @@ Definition vert_edge_eqb (v1 v2 : vert_edge) :=
   let: Build_vert_edge v2x v2t v2b := v2 in
   R_eqb v1x v2x && R_eqb v1t v2t && R_eqb v1b v2b.
 
+(* the lists of points left_pts and right_pts for each cell define the
+  extremities of the doors, but we wish to have a list of all doors,
+  obtained by making intervals between two points. *)
 Fixpoint seq_to_intervals_aux [A : Type] (a : A) (s : seq A) :=
 match s with
 | nil => nil
@@ -524,8 +471,18 @@ Definition cell_safe_exits_right (c : cell) : seq vert_edge :=
   map (fun p => Build_vert_edge lx (p_y (fst p)) (p_y (snd p)))
    (seq_to_intervals (rev (right_pts c))).
 
+(* The index_seq function is a trick to circumvent the absence of a mapi
+  function in Coq code.  It makes it possible to build a list of pairs,
+  where each element is annotated with its position in the list. *)
 Definition index_seq {T : Type} (s : list T) : list (nat * T) :=
   zip (iota 0 (size s)) s.
+
+(* Given a set of cells (given as a sequence), we wish to construct all
+  the vertical edges (called doors) connecting two cells, and we wish each
+  door to contain information about the cells they are connected to, here
+  their rank in the sequence of cells. *)
+
+Definition door := (vert_edge * nat * nat)%type.
 
 Definition cells_to_doors (s : list cell) :=
   let indexed_s := index_seq s in
@@ -549,13 +506,17 @@ Definition on_vert_edge (p : pt) (v : vert_edge) : bool :=
 Definition vert_edge_midpoint (ve : vert_edge) : pt :=
   {|p_x := ve_x ve; p_y := R_div ((R_add (ve_top ve) (ve_bot ve))) R2|}.
  
+(* When a vertical edge contains the source or the target, we wish this
+  point to be considered as the reference point for that edge. *)
 Definition vert_edge_to_reference_point (s t : pt) (v : vert_edge) :=
   if on_vert_edge s v then s
   else if on_vert_edge t v then t
   else vert_edge_midpoint v.
 
-Definition door := (vert_edge * nat * nat)%type.
-
+(* Each door has one or two neighboring cells, the neighboring doors
+  are those doors that share one of these neighboring cells.  Here we only
+  want to know the index of the neighbors.  We make sure to avoid including
+  the current door in the neighbors. *)
 Definition one_door_neighbors
   (indexed_doors : seq (nat * door))
   (i_d : nat * door) : list nat :=
@@ -571,12 +532,19 @@ Definition left_limit (c : cell) := p_x (seq.last dummy_pt (left_pts c)).
 
 Definition right_limit c := p_x (seq.last dummy_pt (right_pts c)).
 
+Definition cmp_option := cmp_option _ R_ltb.
+
 Definition strict_inside_closed p c :=
   negb (point_under_edge p (low c)) &&
   point_strictly_under_edge p (high c) &&
  (R_ltb (left_limit c) (p_x p) &&
  (R_ltb (p_x p) (right_limit c))).
 
+(* For each extremity, we check whether it is already inside an existing
+  door.  If it is the case, we need to remember the index of that door.
+  If the extremity is not inside a door, then we create a fictitious door,
+  where the neighboring cells both are set to the one cell containing this
+  point. *)
 Definition add_extremity_reference_point
   (indexed_cells : seq (nat * cell))
   (p : pt) (doors : seq door) :=
@@ -590,6 +558,10 @@ Definition add_extremity_reference_point
         (filter (fun '(i', c') => strict_inside_closed p c')  indexed_cells) in
       (rcons doors ({|ve_x := p_x p; ve_top := p_y p; ve_bot := p_y p|}, i, i), size doors).
 
+(* This function makes sure that the sequence of doors contains a door
+  for each of the extremities, adding new doors when needed.  It returns
+  the updated sequence of doors and the indexes for the doors containing
+  each of the extremities. *)
 Definition doors_and_extremities (indexed_cells : seq (nat * cell))
   (doors : seq door) (s t : pt) : seq door * nat * nat :=
   let '(d_s, i_s) :=
@@ -598,6 +570,8 @@ Definition doors_and_extremities (indexed_cells : seq (nat * cell))
      add_extremity_reference_point indexed_cells t d_s in
   (d_t, i_s, i_t).
 
+(* In the end the door adjacency map describes the graph in which we
+  want to compute paths. *)
 Definition door_adjacency_map (doors : seq door) :
   seq (seq nat) :=
   let indexed_doors := index_seq doors in
@@ -608,6 +582,10 @@ Definition dummy_vert_edge :=
 
 Definition dummy_door := (dummy_vert_edge, 0, 0).
 
+(* To compute the distance between two doors, we compute the distance
+  between the reference points. TODO: this computation does not take
+  into account the added trajectory to go to a safe point inside the
+  cell where the doors are vertically aligned.  *)
 Definition distance (doors : seq door) (s t : pt) 
   (i j : nat) :=
   let '(v1, _, _) := seq.nth dummy_door doors i in
@@ -616,6 +594,8 @@ Definition distance (doors : seq door) (s t : pt)
   let p2 := vert_edge_to_reference_point s t v2 in
   pt_distance (p_x p1) (p_y p1) (p_x p2) (p_y p2).
 
+(* The function cells_too_doors_graph constructs the graph with
+  weighted edges. *)
 Definition cells_to_doors_graph (cells : seq cell) (s t : pt) :=
   let regular_doors := cells_to_doors cells in
   let indexed_cells := index_seq cells in
@@ -627,20 +607,28 @@ Definition cells_to_doors_graph (cells : seq cell) (s t : pt) :=
         | '(i, neighbors) <- index_seq adj_map] in
       (full_seq_of_doors, neighbors_and_distances, i_s, i_t).
 
+(* We can now call the shortest path algorithm, where the nodes are
+  door indices. *)
 Definition node := nat.
 
-Definition empty := @nil (node * gpath node * option R).
+Definition empty := @nil (node * seq node * option R).
 
-Notation priority_queue := (list (node * gpath node * option R)).
+(* The shortest graph algorithm relies on a priority queue.  We implement
+  such a queue by maintaining a sorted list of nodes. *)
+Notation priority_queue := (list (node * seq node * option R)).
 
 Definition node_eqb := Nat.eqb.
 
+(* To find a element in the priority queue, we just traverse the list
+  until we find one node that that the same index. *)
 Fixpoint gfind (q : priority_queue) n :=
   match q with
   | nil => None
   | (n', p, d) :: tl => if node_eqb n' n then Some (p, d) else gfind tl n
   end.
 
+(* To remove an element, we traverse the list.  Note that we only remove
+  the first instance. *)
 Fixpoint remove (q : priority_queue) n :=
   match q with
   | nil => nil
@@ -651,6 +639,8 @@ Fixpoint remove (q : priority_queue) n :=
       (n', p', d') :: remove tl n
   end.
 
+(* To insert a new association in the priority queue, we are careful to
+  insert the node in the right place comparing the order. *)
 Fixpoint insert (q : priority_queue) n p d :=
   match q with
   | nil => (n, p, d) :: nil
@@ -665,22 +655,31 @@ Definition update q n p d :=
   insert (remove q n) n p d.
 
 Definition pop  (q : priority_queue) :
-   option (node * gpath node * option R * priority_queue) :=
+   option (node * seq node * option R * priority_queue) :=
   match q with
   | nil => None
   | v :: tl => Some (v, tl)
   end.
 
+(* This function takes as input the sequence of cells, the source and
+  target points.  It returns a tuple containing:
+  - the graph of doors,
+      this graph is a sequence of pairs, where the first component is
+         is door, and the second component is the sequence of nodes
+  - the path, when it exists,
+  - the index of the doors containing the source and targt points *)
 Definition c_shortest_path cells s t :=
   let '(adj, i_s, i_t) := cells_to_doors_graph cells s t in
-  (adj, shortest_path node node_eqb (seq.nth [::] adj.2) i_s
-    i_t _ empty
-   gfind update pop (iota 0 (size adj.2)), i_s, i_t).
+  (adj, shortest_path R R0 R_ltb R_add node node_eqb
+         (seq.nth [::] adj.2) i_s i_t _ empty
+         gfind update pop (iota 0 (size adj.2)), i_s, i_t).
 
 Definition midpoint (p1 p2 : pt) : pt :=
  {| p_x := R_div (R_add (p_x p1) (p_x p2)) R2;
     p_y := R_div (R_add (p_y p1) (p_y p2)) R2|}.
 
+(* The center of the cell is computed using the middle of the high edge
+   the middle of the low edge, and their middle. *)
 Definition cell_center (c : cell) :=
   midpoint
     (midpoint (seq.last dummy_pt (left_pts c)) 
@@ -688,9 +687,16 @@ Definition cell_center (c : cell) :=
     (midpoint (head dummy_pt (left_pts c))
               (seq.last dummy_pt (right_pts c))).
 
+(* Each point used in the doors is annotated with the doors on which they
+  are and the cells they connect.  The last information may be useless
+  since we have now door information. *)
 Record annotated_point :=
   Apt { apt_val : pt; door_index : option nat; cell_indices : seq nat}.
 
+(* Given two points p1 and p2 on a side of a cell, this computes a point
+   inside the cell that is a sensible intermediate point to move from p1
+   to p2 while staying safely inside the cell. *)
+  
 Definition safe_intermediate_point_in_cell (p1 p2 : pt) (c : cell)
    (ci : nat) :=
   let new_x := p_x (cell_center c) in
@@ -701,6 +707,9 @@ Definition safe_intermediate_point_in_cell (p1 p2 : pt) (c : cell)
     else
       Apt (cell_center c) None (ci :: nil).
 
+(* When two neighbor doors are aligned vertically, they have a neighboring
+   cell in common.  This can be computed by looking at the intersection
+   between their lists of neighboring cells. *)
 Definition intersection (s1 s2 : seq nat) :=
   [seq x | x <- s1 & existsb (fun y => Nat.eqb x y) s2].
 
@@ -733,13 +742,6 @@ Fixpoint a_shortest_path (cells : seq cell)
        p :: a_shortest_path cells doors s t a_p' tlpath
   end.
 
-Fixpoint path_to_segments (p : annotated_point)
-   (path : seq annotated_point) : seq (annotated_point * annotated_point) :=
-  match path with
-  | nil => nil
-  | p' :: tl => (p, p') :: path_to_segments p' tl
-  end.
-
 Definition path_reverse (s : seq (annotated_point * annotated_point)) :=
   List.map (fun p => (snd p, fst p)) (List.rev_append s nil).
 
@@ -759,7 +761,7 @@ Definition source_to_target
       match a_shortest_path cells doors source target
                 last_point path with
       | nil => None
-      | a :: tl => Some(doors.1, path_reverse (path_to_segments a tl))
+      | a :: tl => Some(doors.1, path_reverse (seq_to_intervals_aux a tl))
     end
   else
     None.
@@ -846,12 +848,12 @@ Fixpoint check_bezier_ccw (fuel : nat) (v : vert_edge)
 match fuel with
 | O => None
 | S p =>
-  let top_edge := Bpt (ve_x v)  (ve_top v) in
-  if negb (point_under_edge top_edge (Bedge a c)) then
+  let top_of_edge := Bpt (ve_x v)  (ve_top v) in
+  if negb (point_under_edge top_of_edge (Bedge a c)) then
     Some true
   else if
-     point_under_edge top_edge (Bedge a b) ||
-     point_under_edge top_edge (Bedge b c)
+     point_under_edge top_of_edge (Bedge a b) ||
+     point_under_edge top_of_edge (Bedge b c)
   then 
     Some false
   else
@@ -878,12 +880,12 @@ Fixpoint check_bezier_cw (fuel : nat) (v : vert_edge)
 match fuel with
 | O => None
 | S p =>
-  let bot_edge := Bpt (ve_x v)  (ve_bot v) in
-  if point_strictly_under_edge bot_edge (Bedge a c) then
+  let bot_of_edge := Bpt (ve_x v)  (ve_bot v) in
+  if point_strictly_under_edge bot_of_edge (Bedge a c) then
     Some true
   else if
-     negb (point_strictly_under_edge bot_edge (Bedge a b)) ||
-     negb (point_strictly_under_edge bot_edge (Bedge b c))
+     negb (point_strictly_under_edge bot_of_edge (Bedge a b)) ||
+     negb (point_strictly_under_edge bot_of_edge (Bedge b c))
   then 
     Some false
   else
@@ -974,6 +976,15 @@ Definition smooth_from_cells (cells : seq cell)
   | Some (doors, s) => List.concat
        (List.map (check_curve_element_and_repair fuel_constant doors)
                               (smoothen (break_segments s)))
+  | None => nil
+  end.
+
+Definition point_to_point (bottom top : edge) (obstacles : seq edge)
+  (initial final : pt) : seq curve_element :=
+  let cells := edges_to_cells bottom top obstacles in
+  match source_to_target cells initial final with
+  | Some (doors, s) => 
+    List.map (fun '(a, b) => straight a b) s
   | None => nil
   end.
 

@@ -1,3 +1,4 @@
+theories/shortest_path.v
 theories/generic_trajectories.v
 theories/smooth_trajectories.v
 theories/convex.v
