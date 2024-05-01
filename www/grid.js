@@ -257,7 +257,7 @@ function cleanCurve () {
 
 function getCurve() {
   console.log("getCurve\n");
-  if (positions == null) {
+  if ((fromValid == false) || (toValid == false)) {
     return;
   }
   let val = "";
@@ -379,7 +379,7 @@ function cleanStraight () {
 
 function getStraight() {
   console.log("getStraight\n");
-  if (positions == null) {
+  if ((fromValid == false) || (toValid == false)) {
     return;
   }
   let val = "";
