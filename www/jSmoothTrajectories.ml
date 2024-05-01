@@ -134,7 +134,7 @@ let call_cells s =
 let _ =
   Js.export "ocamlLib"
     (object%js
-      method straight s = Js.string (call_smooth (Js.to_string s))
+      method straight s = Js.string (call_straight (Js.to_string s))
       method smooth s = Js.string (call_smooth (Js.to_string s))
       method cells s = Js.string (call_cells (Js.to_string s))
     end)
