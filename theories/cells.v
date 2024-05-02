@@ -85,7 +85,7 @@ Definition last_cell (s : seq cell) := last dummy_cell s.
 
 Definition contains_point :=
   contains_point R eq_op le +%R (fun x y => x - y) *%R 1 edge
-  (@left_pt R) (@right_pt R).
+  (@left_pt R edge) (@right_pt R edge).
 
 Lemma contains_pointE p c :
   contains_point p c = (p >>= low c) && (p <<= high c).
@@ -124,6 +124,7 @@ Lemma inside_open'E p c :
    p_x p <= open_limit c].
 Proof.
 rewrite /inside_open' /inside_open_cell contains_pointE.
+rewrite 
 rewrite strictE -leNgt !le_eqVlt.
 rewrite [in _ >>> low c]/point_under_edge -ltNge subrr.
 by case: (0 < _); case: (_ < p_x p); rewrite ?andbF ?orbT ?andbT.

@@ -111,7 +111,7 @@ Definition lexPtEv (e1 e2 : event) : bool :=
 Definition lexePtEv (e1 e2 : event) : bool :=
   lexePt (point e1) (point e2).
 
-Definition event_close_edge ed ev : bool :=
+Definition event_close_edge (ed : edge) ev : bool :=
 right_pt ed == point ev.
 
 Definition end_edge edge events : bool :=

@@ -84,28 +84,28 @@ Definition area3 :=
   area3 R +%R (fun x y => x - y) *%R.
 
 (* returns true if p is under e *)
-Definition point_under_edge :=
-  point_under_edge R le +%R (fun x y => x - y) *%R 1 edge
+Definition point_under_edge (s : simple_edge R) :=
+  point_under_edge R le +%R (fun x y => x - y) *%R 1 s
   left_pt right_pt.
 
-Definition point_strictly_under_edge :=
-  point_strictly_under_edge R eq_op le +%R (fun x y => x - y) *%R 1 edge
+Definition point_strictly_under_edge (s : simple_edge R) :=
+  point_strictly_under_edge R eq_op le +%R (fun x y => x - y) *%R 1 s
   left_pt right_pt.
 
 Lemma R_ltb_lt  x y : R_ltb R eq_op le x y = (x < y).
 Proof. by rewrite /R_ltb -lt_neqAle. Qed.
 
-Lemma strictE p e :
+Lemma strictE (s : simple_edge R) p e :
   generic_trajectories.point_strictly_under_edge R eq_op le +%R
-    (fun x y => x - y) *%R 1 edge left_pt right_pt p e =
+    (fun x y => x - y) *%R 1 s left_pt right_pt p e =
   (area3 p (left_pt e) (right_pt e) < 0).
 Proof.
 by rewrite /generic_trajectories.point_strictly_under_edge R_ltb_lt subrr.
 Qed.
 
-Lemma underE p e :
+Lemma underE (s : simple_edge R) p e :
   generic_trajectories.point_under_edge R le +%R
-    (fun x y => x - y) *%R 1 edge left_pt right_pt p e =
+    (fun x y => x - y) *%R 1 s left_pt right_pt p e =
   (area3 p (left_pt e) (right_pt e) <= 0).
 Proof. by rewrite /generic_trajectories.point_under_edge subrr. Qed.
 
@@ -562,14 +562,14 @@ rewrite edge_and_left_vertical //; rewrite /subpoint /= lterBDr cprD.
 by rewrite ltr01.
 Qed.
 
-Lemma underW p e :
+Lemma underW (s : simple_edge R) p (e : s) :
   (p <<< e) ->
   (p <<= e).
 Proof.
 move=> /andP[] _ it; exact: it.
 Qed.
 
-Lemma underWC p e :
+Lemma underWC (s : simple_edge R) p (e : s) :
 ~~ (p <<= e) -> ~~ (p <<< e).
 Proof. by move/negP=> it; apply/negP=> it'; case: it; apply : underW. Qed.
 
@@ -675,6 +675,8 @@ split.
   by apply ltW.
 by [].
 Qed.
+
+Implicit Types low_e high_e : edge.
 
 Lemma point_on_edge_above low_e high_e a :
 a === high_e ->
@@ -928,7 +930,7 @@ rewrite area3_opposite -area3_cycle eqxp'p eqr_oppLR => /eqP ->.
 by rewrite -mulNr mulr_le0 // oppr_le0 subr_cp0.
 Qed.
 
-Lemma pue_right_edge e p :
+Lemma pue_right_edge (e : edge) p :
 p_x (right_pt e) == p_x p ->
 (p <<= e) = ((p_y p - p_y (right_pt e)) <= 0).
 Proof.
@@ -942,7 +944,7 @@ rewrite -subr_cp0 -opprB oppr_lt0 in inE.
 by rewrite subrr (pmulr_rle0 _  inE) .
 Qed.
 
-Lemma psue_right_edge e p :
+Lemma psue_right_edge (e : edge) p :
 p_x (right_pt e) == p_x p ->
 (p <<< e) = ((p_y p - p_y (right_pt e)) < 0).
 Proof.
@@ -957,7 +959,7 @@ rewrite -subr_gt0 in cnd.
 by rewrite subrr (pmulr_rlt0 _  cnd) .
 Qed.
 
-Lemma pue_left_edge e p :
+Lemma pue_left_edge (e : edge) p :
 p_x (left_pt e) == p_x p ->
 (p <<= e) = (0 <= (p_y (left_pt e) - p_y p )).
 Proof.
@@ -972,7 +974,7 @@ rewrite -subr_cp0 in inE.
 by rewrite subrr (nmulr_rle0 _  inE).
 Qed.
 
-Lemma psue_left_edge e p :
+Lemma psue_left_edge (e : edge) p :
 p_x (left_pt e) == p_x p ->
 (p <<< e) = (0 < p_y (left_pt e) - p_y p).
 Proof.
@@ -987,7 +989,7 @@ rewrite -subr_cp0 in cnd.
 by rewrite subrr (nmulr_rlt0 _ cnd).
 Qed.
 
-Lemma not_strictly_under low_e high_e  :
+Lemma not_strictly_under low_e high_e :
 (left_pt low_e) <<= high_e ->
 (right_pt low_e) <<= high_e ->
 valid_edge low_e (right_pt high_e)  ->
@@ -1476,7 +1478,7 @@ move=> inf0.
 by have := (under_low_imp_strict_under_high_bis pueplow puephigh vallow valhigh inf0).
 Qed.
 
-Lemma edge_dir_intersect p1 p2 e1 :
+Lemma edge_dir_intersect (s : simple_edge R) p1 p2 (e1 : s) :
   p_x p1 != p_x p2 ->
   ~~(p1 <<= e1) -> p2 <<< e1 ->
  exists p, area3 p (left_pt e1) (right_pt e1) = 0 /\
@@ -1497,7 +1499,7 @@ exists (Bpt px py); rewrite on_line1 on_line2;split;[ | split]=> //.
 by move=> [qx qy]; rewrite !area3E=> /uniq => U; move=> {}/U[] /= -> ->.
 Qed.
 
-Lemma intersection_middle_au e1 e2 :
+Lemma intersection_middle_au (s : simple_edge R) (e1 : s) (e2 : edge) :
   ~~ (left_pt e2 <<= e1) -> right_pt e2 <<< e1 ->
   exists p, area3 p (left_pt e1) (right_pt e1) = 0 /\ p === e2.
 Proof.
